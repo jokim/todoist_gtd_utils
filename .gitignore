@@ -3,6 +3,7 @@
 *.py[cod]
 /dist/
 /build/
+/env/
 /sdist/
 *.egg
 *.eggs/

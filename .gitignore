@@ -1,5 +1,9 @@
 *~
 .*.sw?
-*.pyc
+*.py[cod]
 /dist/
+/build/
+/sdist/
+*.egg
+*.eggs/
 /*.egg-info

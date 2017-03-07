@@ -1,0 +1,12 @@
+#!/bin/env python
+# -*- encoding: utf-8 -*-
+
+import argparse
+#import todoist_gtd_cleaner
+
+if __name__ == '__main__':
+    p = argparse.ArgumentParser(
+            description="Run cleanups in Todoist, for GTD setup")
+
+    args = p.parse_args()
+    print "It works!"

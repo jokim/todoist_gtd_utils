@@ -2,11 +2,22 @@
 # -*- encoding: utf-8 -*-
 
 import argparse
-#import todoist_gtd_cleaner
+import todoist_gtd_cleaner
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
-            description="Run cleanups in Todoist, for GTD setup")
+            description="Clean up in Todoist, for GTD setup")
+    p.add_argument('--token', required=True, help="API token to user for user")
+    p.add_argument('-q', '--query', help="What items to clean up (test)")
 
     args = p.parse_args()
-    print "It works!"
+
+    api = todoist_gtd_cleaner.TodoistGTD(args.token)
+    r = api.search(args.query)
+    for i in r:
+        try:
+            print unicode(i)
+        except Exception, e:
+            print " ({})".format(e)
+            print repr(i)
+            raise

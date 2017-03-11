@@ -36,10 +36,41 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """Shortcut for getting a project's name"""
         return '#' + self.projects.get_by_id(id)['name']
 
+    def get_projects_by_name(self, name, raise_on_duplicate=True):
+        """Find a project by its given name.
+
+        :type name: str
+        :param name:
+            The name of the project. Must match exact, but whitespace around is
+            ignored.
+
+        :type raise_on_duplicate: bool
+        :param raise_on_duplicate:
+            Set to True if you assert that only one project exist with given
+            name. If True, an exception is raised if more than one project exist
+            with given name, and a Project is returned instead of a list.
+
+        :rtype: list or todoist.models.Project
+        :return:
+            Returns one *Project* object if `raise_on_duplicate` is True,
+            otherwise a list of Project objects.
+
+        """
+        name = name.strip()
+        ret = []
+        for p in self.projects.all():
+            if p['name'].strip() == name:
+                ret.append(p)
+        if raise_on_duplicate:
+            if len(ret) != 1:
+                raise Exception("Several projects with name: {}".format(name))
+            return ret[0]
+        return ret
+
     def get_child_projects(self, parent):
         """Get a list of all child projects of a given project
 
-        :type parent: todoist.model.Project
+        :type parent: todoist.models.Project
         :param parent: The target project to fetch children for
 
         :rtype: list

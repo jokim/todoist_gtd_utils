@@ -4,8 +4,6 @@
 import requests
 import todoist
 
-
-
 class TodoistGTD(todoist.api.TodoistAPI):
 
     def _get(self, call, url=None, **kwargs):
@@ -30,11 +28,28 @@ class TodoistGTD(todoist.api.TodoistAPI):
 
     def get_label_name(self, id):
         """Shortcut for getting a label's name"""
-        return '@' + self.labels.get_by_id(id)['name']
+        if isinstance(id, (list, tuple, set)):
+            return map(self.get_label_name, id)
+        return self.labels.get_by_id(id)['name']
+
+    def get_label_id(self, name):
+        """Shortcut for getting a label's id"""
+        if isinstance(id, (list, tuple, set)):
+            return map(self.get_label_id, name)
+        for l in self.labels.all(lambda x: x['name'] == name):
+            # Label names must be unique, so will get max one result
+            return l
+        raise Exception('No label with name: {]'.format(name))
+
+    def get_label_humanname(self, id):
+        """Retrieve a labels name with @ in front"""
+        if isinstance(id, (list, tuple, set)):
+            return map(self.get_label_humanname, id)
+        return '@' + self.get_label_name(id)
 
     def get_project_name(self, id):
         """Shortcut for getting a project's name"""
-        return '#' + self.projects.get_by_id(id)['name']
+        return self.projects.get_by_id(id)['name'].strip()
 
     def get_projects_by_name(self, name, raise_on_duplicate=True):
         """Find a project by its given name.
@@ -94,17 +109,35 @@ class TodoistGTD(todoist.api.TodoistAPI):
                     found = False
         return ret
 
+def trim_too_long(txt, size=30, suffix=u'…'):
+    """Shorten sentence, and add a suffix if too long.
+
+    :type txt: unicode or str
+    :param txt: The text to shorten
+
+    :type size: int
+    :param size: The length of result, including suffix
+
+    """
+    if len(txt) <= size:
+        return txt
+    return txt[:size-len(suffix)].rstrip() + suffix
+
 class HumanItem(todoist.models.Item):
     """Simpler representation of a todoist item (task)."""
 
     def __unicode__(self):
-        ret = self['content']
+        ret = trim_too_long(self['content'], 50)
         if self['date_string']:
             ret += ' [{}]'.format(self['date_string'])
         if self['labels']:
-            ret += ' ' + ' '.join(map(self.api.get_label_name, self['labels'] or
-                ()))
-        #ret += ' ' + self.api.get_project_name(self['project_id'])
+            ret += ' ' + ' '.join(self.api.get_label_humanname(self['labels'])
+                                  or ())
+        ret += trim_too_long(' #' +
+                self.api.get_project_name(self['project_id']), 30)
         return ret
+
+    def __str__(self):
+        return self.__unicode__()
 
 todoist.models.Item = HumanItem

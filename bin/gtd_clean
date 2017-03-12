@@ -4,20 +4,45 @@
 import argparse
 import todoist_gtd_cleaner
 
+def ask_confirmation(prompt):
+    ret = raw_input(unicode(prompt + u" (y/N): ").encode('utf8'))
+    return ret == 'y'
+
+def remove_labels_in_someday(api):
+    print "Remove labels in Someday/Maybe..."
+    ignore_labels = ('expence', 'cerebrumstatus', 'cerebrumpartnarar',
+                     'gtd', u'tenestegruppemøte', 'read', 'waiting',
+                     'cerebrumdrift', 'uia', u'hiø', 'nmh', 'nih', 'tsd',
+                     'kindle',
+                    )
+    ignore_l_ids = set(api.get_label_id(l)['id'] for l in ignore_labels)
+
+    proj = api.get_projects_by_name("Someday Maybe")
+    child_pr = list(api.get_child_projects(proj))
+    child_pr_ids = set(p['id'] for p in child_pr)
+
+    items = api.items.all(lambda x: x['project_id'] in child_pr_ids)
+
+    for i in items:
+        labels_to_remove = set(i['labels']) - ignore_l_ids
+        if labels_to_remove:
+            print u"\nItem: {}".format(i)
+            if ask_confirmation(u"Ok to remove labels: {}?".format(', '.join(
+                                api.get_label_humanname(labels_to_remove)))):
+                # TODO: add support for editing the labels and not just y/n
+                remaining_l = set(i['labels']) - labels_to_remove
+                for l in labels_to_remove:
+                    api.notes.add(i['id'],
+                                  "gtd_clean:removed_label:{}".format(l))
+                ret = i.update(labels=list(remaining_l))
+        api.commit()
+    print "Done removing labels in Someday/Maybe"
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
             description="Clean up in Todoist, for GTD setup")
     p.add_argument('--token', required=True, help="API token to user for user")
-    p.add_argument('-q', '--query', help="What items to clean up (test)")
-
     args = p.parse_args()
-
     api = todoist_gtd_cleaner.TodoistGTD(args.token)
-    r = api.search(args.query)
-    for i in r:
-        try:
-            print unicode(i)
-        except Exception, e:
-            print " ({})".format(e)
-            print repr(i)
-            raise
+
+    remove_labels_in_someday(api)

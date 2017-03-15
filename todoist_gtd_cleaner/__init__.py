@@ -39,7 +39,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
         for l in self.labels.all(lambda x: x['name'] == name):
             # Label names must be unique, so will get max one result
             return l
-        raise Exception('No label with name: {]'.format(name))
+        raise Exception('No label with name: {}'.format(name))
 
     def get_label_humanname(self, id):
         """Retrieve a labels name with @ in front"""

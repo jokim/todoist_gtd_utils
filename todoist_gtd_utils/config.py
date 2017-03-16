@@ -15,7 +15,7 @@ import codecs
 import ConfigParser
 
 """ Default files to get config from """
-default_files = [u'~/.todoist_gtd_cleaner.ini']
+default_files = [u'~/.todoist_gtd_utils.ini']
 
 """ The default settings that is used in config """
 default_settings = {
@@ -28,7 +28,7 @@ default_settings = {
         }
 
 class Config(ConfigParser.ConfigParser, object):
-    """ Config settings for todoist_gtd_clean.
+    """ Config settings for todoist_gtd_utils.
 
     Set default values.
 
@@ -65,14 +65,15 @@ class Config(ConfigParser.ConfigParser, object):
             return unicode(r, 'utf-8')
         return r
 
-    def get_commalist(self, section, option):
+    def get_commalist(self, section, option, *args, **kwargs):
         """Get/parse a comma separated list as a native list"""
-        raw = self.get(section, option)
+        raw = self.get(section, option, *args, **kwargs)
         ret = []
-        for e in raw.split(','):
-            e = e.strip()
-            if e:
-                ret.append(e)
+        if raw:
+            for e in raw.split(','):
+                e = e.strip()
+                if e:
+                    ret.append(e)
         return ret
 
 if __name__ == '__main__':

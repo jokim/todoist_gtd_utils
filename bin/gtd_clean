@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import argparse
-import todoist_gtd_cleaner
+import todoist_gtd_utils
 
 def ask_confirmation(prompt):
     ret = raw_input(unicode(prompt + u" (y/N): ").encode('utf8'))
@@ -29,7 +29,7 @@ def remove_labels_in_someday(api):
                 remaining_l = set(i['labels']) - labels_to_remove
                 for l in labels_to_remove:
                     api.notes.add(i['id'],
-                                  "gtd_clean:removed_label:{}".format(l))
+                                  "gtd_utils:removed_label:{}".format(l))
                 ret = i.update(labels=list(remaining_l))
         api.commit()
     print "Done removing labels in Someday/Maybe"
@@ -38,9 +38,9 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(
             description="Clean up in Todoist, for GTD setup")
     p.add_argument('--configfile', help="Change path to config file",
-                   default='~/.todoist_gtd_cleaner.ini')
+                   default='~/.todoist_gtd_utils.ini')
     p.add_argument('--token', help="API token to user for user")
     args = p.parse_args()
-    api = todoist_gtd_cleaner.TodoistGTD(configfiles=args.configfile, token=args.token)
+    api = todoist_gtd_utils.TodoistGTD(configfiles=args.configfile, token=args.token)
 
     remove_labels_in_someday(api)

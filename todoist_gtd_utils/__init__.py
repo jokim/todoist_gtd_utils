@@ -1,6 +1,17 @@
 #!/bin/env python
 # -*- encoding: utf-8 -*-
 
+""" Utility functionality for using Todoist.
+
+Automating and batching changes in Todoist which isn't supported in the official
+GUI.
+
+TODO:
+- Fix better config
+- Check if authenticated. Now you mostly get empty returns.
+
+"""
+
 import requests
 import todoist
 
@@ -87,8 +98,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
             if p['name'].strip() == name:
                 ret.append(p)
         if raise_on_duplicate:
-            if len(ret) != 1:
+            if len(ret) > 1:
                 raise Exception("Several projects with name: {}".format(name))
+            if len(ret) == 0:
+                raise Exception("No project with name: {}".format(name))
             return ret[0]
         return ret
 

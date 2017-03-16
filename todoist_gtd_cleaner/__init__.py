@@ -4,7 +4,17 @@
 import requests
 import todoist
 
+from . import config
+
 class TodoistGTD(todoist.api.TodoistAPI):
+
+    def __init__(self, token=None, configfiles=None):
+        self.config = config.Config()
+        if configfiles:
+            self.config.read(configfiles)
+        if not token:
+            token = self.config.get('todoist', 'api-token')
+        super(TodoistGTD, self).__init__(token)
 
     def _get(self, call, url=None, **kwargs):
         """Override to raise HTTP errors"""

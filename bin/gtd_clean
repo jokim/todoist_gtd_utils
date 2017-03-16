@@ -10,11 +10,7 @@ def ask_confirmation(prompt):
 
 def remove_labels_in_someday(api):
     print "Remove labels in Someday/Maybe..."
-    ignore_labels = ('expence', 'cerebrumstatus', 'cerebrumpartnarar',
-                     'gtd', u'tenestegruppemøte', 'read', 'waiting',
-                     'cerebrumdrift', 'uia', u'hiø', 'nmh', 'nih', 'tsd',
-                     'kindle',
-                    )
+    ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
     ignore_l_ids = set(api.get_label_id(l)['id'] for l in ignore_labels)
 
     proj = api.get_projects_by_name("Someday Maybe")
@@ -41,8 +37,10 @@ def remove_labels_in_someday(api):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
             description="Clean up in Todoist, for GTD setup")
-    p.add_argument('--token', required=True, help="API token to user for user")
+    p.add_argument('--configfile', help="Change path to config file",
+                   default='~/.todoist_gtd_cleaner.ini')
+    p.add_argument('--token', help="API token to user for user")
     args = p.parse_args()
-    api = todoist_gtd_cleaner.TodoistGTD(args.token)
+    api = todoist_gtd_cleaner.TodoistGTD(configfiles=args.configfile, token=args.token)
 
     remove_labels_in_someday(api)

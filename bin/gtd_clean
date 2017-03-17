@@ -2,11 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import argparse
-import todoist_gtd_utils
-
-def ask_confirmation(prompt):
-    ret = raw_input(unicode(prompt + u" (y/N): ").encode('utf8'))
-    return ret == 'y'
+from todoist_gtd_utils import utils, TodoistGTD
 
 def remove_labels_in_someday(api):
     print "Remove labels in Someday/Maybe..."
@@ -23,7 +19,7 @@ def remove_labels_in_someday(api):
         labels_to_remove = set(i['labels']) - ignore_l_ids
         if labels_to_remove:
             print u"\nItem: {}".format(i)
-            if ask_confirmation(u"Ok to remove labels: {}?".format(', '.join(
+            if utils.ask_confirmation(u"Ok to remove labels: {}?".format(', '.join(
                                 api.get_label_humanname(labels_to_remove)))):
                 # TODO: add support for editing the labels and not just y/n
                 remaining_l = set(i['labels']) - labels_to_remove
@@ -35,12 +31,8 @@ def remove_labels_in_someday(api):
     print "Done removing labels in Someday/Maybe"
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(
-            description="Clean up in Todoist, for GTD setup")
-    p.add_argument('--configfile', help="Change path to config file",
-                   default='~/.todoist_gtd_utils.ini')
-    p.add_argument('--token', help="API token to user for user")
+    p = utils.get_argparser(description="Clean up in Todoist, for GTD setup")
     args = p.parse_args()
-    api = todoist_gtd_utils.TodoistGTD(configfiles=args.configfile, token=args.token)
+    api = TodoistGTD(configfiles=args.configfile, token=args.token)
 
     remove_labels_in_someday(api)

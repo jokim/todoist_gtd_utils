@@ -8,7 +8,6 @@ GUI.
 
 TODO:
 - Fix better config
-- Check if authenticated. Now you mostly get empty returns.
 
 """
 
@@ -26,6 +25,14 @@ class TodoistGTD(todoist.api.TodoistAPI):
         if not token:
             token = self.config.get('todoist', 'api-token')
         super(TodoistGTD, self).__init__(token)
+
+        # Check if authenticated:
+        if token:
+            params = {'token': self.token,
+                      'sync_token': '*',
+                      'resource_types': '["labels"]',
+                      }
+            self._get('sync', params=params)
 
     def _get(self, call, url=None, **kwargs):
         """Override to raise HTTP errors"""

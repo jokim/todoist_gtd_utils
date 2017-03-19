@@ -3,18 +3,18 @@
 
 """ Utility functionality for using Todoist.
 
-Automating and batching changes in Todoist which isn't supported in the official
-GUI.
+Automating and batching changes in Todoist which isn't supported in the
+official GUI.
 
 TODO:
 - Fix better config
 
 """
 
-import requests
 import todoist
 
 from . import config
+
 
 class TodoistGTD(todoist.api.TodoistAPI):
 
@@ -90,8 +90,8 @@ class TodoistGTD(todoist.api.TodoistAPI):
         :type raise_on_duplicate: bool
         :param raise_on_duplicate:
             Set to True if you assert that only one project exist with given
-            name. If True, an exception is raised if more than one project exist
-            with given name, and a Project is returned instead of a list.
+            name. If True, an exception is raised if more than one project
+            exist with given name, and a Project is returned instead of a list.
 
         :rtype: list or todoist.models.Project
         :return:
@@ -139,6 +139,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
                     found = False
         return ret
 
+
 def trim_too_long(txt, size=30, suffix=u'…'):
     """Shorten sentence, and add a suffix if too long.
 
@@ -153,6 +154,7 @@ def trim_too_long(txt, size=30, suffix=u'…'):
         return txt
     return txt[:size-len(suffix)].rstrip() + suffix
 
+
 class HumanItem(todoist.models.Item):
     """Simpler representation of a todoist item (task)."""
 
@@ -161,10 +163,11 @@ class HumanItem(todoist.models.Item):
         if self['date_string']:
             ret += ' [{}]'.format(self['date_string'])
         if self['labels']:
-            ret += ' ' + ' '.join(self.api.get_label_humanname(self['labels'])
-                                  or ())
+            labels = ' '.join(self.api.get_label_humanname(self['labels']) or
+                              ())
+            ret += ' ' + labels
         ret += trim_too_long(' #' +
-                self.api.get_project_name(self['project_id']), 30)
+                             self.api.get_project_name(self['project_id']), 30)
         return ret
 
     def __str__(self):

@@ -1,0 +1,109 @@
+#!/bin/env python
+# -*- encoding: utf-8 -*-
+
+""" Create an item (task) in Todoist from piping mails from mutt.
+
+Designed to be called from mutt by piping the full mail to the script.
+
+"""
+
+import re
+import argparse
+from todoist.api import SyncError
+from todoist_gtd_utils import utils, TodoistGTD
+
+
+def parse_content(api, content):
+    """Get labels, projects and date out of a content string.
+
+    NOT as advanced as Todoist own parser. Does for instance not support
+    white space in labels and projects.
+
+    """
+    # Find project (#projectname)
+    project = "Inbox"
+    r = re.search('#(\w+)', content)
+    if r:
+        p = r.groups()[0]
+        try:
+            api.get_projects_by_name(p)
+        except Exception:
+            pass
+        else:
+            project = p
+            content = content.replace('#' + p, '')
+
+    # Find labels (@labelname)
+    labelnames = set(l['name'] for l in api.labels.all())
+    labels = set(l for l in re.findall('\@(\w+)', content) if l in labelnames)
+    for l in labels:
+        content = content.replace('@' + l, '')
+
+    content, date = parse_date(content)
+
+    # Remove superfluous spaces
+    content = re.sub('  +', ' ', content).strip()
+    return content, project, date, labels
+
+dateformats = ('(mon|tues|wednes|thurs|fri|satur|sun)day', 'tomorrow', 'today',
+               'next month', 'next year', '[0-3]?[0-9]\. [a-z]{3,6}( \d{4})?',
+               )
+timeformats = ('[0-1][0-9]:[0-5][0-9]',)
+
+
+def parse_date(content):
+    """Return first date format found, and remove from content"""
+    for d in dateformats:
+        m = re.search('({}( {})?)'.format(d, timeformats), content)
+        if m:
+            return content.replace(m.groups()[0], ''), m.groups()[0]
+    return content, None
+
+
+def gather_input(api, args):
+    """Ask user for info about the new item."""
+    content = unicode(raw_input("New task: "), 'utf-8')
+    content, project, date, labels = parse_content(api, content)
+
+    print
+    # TODO: colorize invalid project and label names (# and @), to highlight
+    # what looks like typos
+    print content
+    print
+
+    projects = set(p['name'] for p in api.projects.all())
+    project = utils.ask_choice('Project', choices=projects, default=project,
+                               category="project")
+    all_labels = set(l['name'] for l in api.labels.all())
+    labels = utils.ask_multichoice('Labels', choices=all_labels,
+                                   default=labels, category="labels")
+
+    date = utils.ask_choice('Date', choices=dateformats, default=date,
+                            category="date", regex_choices=True)
+    return content, project, date, labels
+
+if __name__ == '__main__':
+    p = utils.get_argparser(usage="%(prog)s [options] MAILFILE",
+                            description=__doc__)
+    p.add_argument('mail', metavar="MAILFILE", type=argparse.FileType('r'),
+                   help="Mail to store as note. Defaults to piped input, e.g. "
+                   "from mutt",
+                   )
+    args = p.parse_args()
+    api = TodoistGTD(configfiles=args.configfile, token=args.token)
+
+    mail = ''.join(args.mail.readlines())
+
+    content, project, date, labels = gather_input(api, args)
+    i = api.items.add(content, priority=1, indent=1,
+                      project_id=api.get_projects_by_name(project),
+                      date_string=date, labels=api.get_label_id(labels))
+    # TODO: filter mail
+    api.notes.add(i['id'], mail)
+    try:
+        api.commit()
+    except SyncError:
+        # Sometimes, the sync fails due to "Invalid temporary id
+        # (INVALID_TEMPID)". Haven't dug out the cause, but a retry most often
+        # fix the issue:
+        api.commit()

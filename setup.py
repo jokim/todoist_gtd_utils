@@ -45,6 +45,7 @@ setup(name='todoist_gtd_utils',
       install_requires=list(get_requirements('requirements.txt')),
       scripts=[
           'bin/gtd_clean',
+          'bin/todoist_add_mail_item',
           ],
       include_package_data=True,
       #zip_safe=False,

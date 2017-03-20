@@ -3,7 +3,12 @@
 
 """ Create an item (task) in Todoist from piping mails from mutt.
 
-Designed to be called from mutt by piping the full mail to the script.
+Meant to be called from mutt by piping the full mail to the script. Example of
+macro config for mutt::
+
+    macro index,pager GG "<pipe-entry>less > /tmp/mutt-$USER-mail-todoist.tmp<enter><shell-escape>todoist_add_mail_item /tmp/mutt-$USER-mail-todoist.tmp<enter>"
+
+You will then be asked for content, project, labels and date.
 
 """
 

@@ -14,6 +14,8 @@ You will then be asked for content, project, labels and date.
 
 import re
 import argparse
+import email
+import email.header
 from todoist.api import SyncError
 from todoist_gtd_utils import utils, TodoistGTD
 
@@ -87,6 +89,36 @@ def gather_input(api, args):
                             category="date", regex_choices=True)
     return content, project, date, labels
 
+def filter_mail(fp):
+    """Prettify mail content so it's easy to read in a comment.
+
+    Uses Todoist's Markdown support.
+
+    TODO: Fix the function! Now it's just a hack...
+
+    :type fp: file
+    :param fp: The full, raw mail, with headers.
+
+    """
+    m = email.message_from_file(fp)
+    ret = ''
+    for header in ('Date', 'From', 'To', 'Message-Id', 'Reply-To', 'Subject'):
+        value = u' '.join(unicode(t[0], t[1] or 'latin1') for t in
+                          email.header.decode_header(m.get(header, '')))
+        if header in ('Subject', 'From'):
+            ret += '**'
+        ret += "{}: {}".format(header, value.encode('utf-8'))
+        if header in ('Subject', 'From'):
+            ret += '**'
+        ret += '\n'
+    ret += "\n"
+    body = m.get_payload()
+    if isinstance(body, (tuple, list)):
+        ret += ''.join(body)
+    else:
+        ret += body
+    return ret
+
 if __name__ == '__main__':
     p = utils.get_argparser(usage="%(prog)s [options] MAILFILE",
                             description=__doc__)
@@ -97,16 +129,13 @@ if __name__ == '__main__':
     args = p.parse_args()
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
 
-    mail = ''.join(args.mail.readlines())
-
     content, project, date, labels = gather_input(api, args)
-    # Add emoji for mark that item came by email
+    # Add emoji for mark that item came by email:
     content += ' :email:'
     i = api.items.add(content, priority=1, indent=1,
                       project_id=api.get_projects_by_name(project),
                       date_string=date, labels=api.get_label_id(labels))
-    # TODO: filter mail
-    api.notes.add(i['id'], mail)
+    api.notes.add(i['id'], filter_mail(args.mail))
     try:
         api.commit()
     except SyncError:

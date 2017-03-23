@@ -102,7 +102,8 @@ def filter_mail(fp):
     """
     m = email.message_from_file(fp)
     ret = ''
-    for header in ('Date', 'From', 'To', 'Message-Id', 'Reply-To', 'Subject'):
+    for header in ('Date', 'From', 'To', 'Message-Id', 'Reply-To', 'Subject',
+                   'Sender'):
         value = u' '.join(unicode(t[0], t[1] or 'latin1') for t in
                           email.header.decode_header(m.get(header, '')))
         if header in ('Subject', 'From'):

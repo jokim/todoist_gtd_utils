@@ -118,7 +118,8 @@ def filter_mail(fp):
     ret += "\n"
     body = m.get_payload()
     if isinstance(body, (tuple, list)):
-        ret += ''.join(body)
+        # TODO: Filter html etc
+        ret += '\n'.join(m2.get_payload() for m2 in body)
     else:
         ret += body
     return ret

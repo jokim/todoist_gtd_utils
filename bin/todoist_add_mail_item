@@ -94,7 +94,7 @@ def gather_input(api, args):
     projects = set(unicode(p['name']) for p in api.projects.all())
     project = utils.ask_choice('Project', choices=projects, default=project,
                                category="project")
-    all_labels = set(unicode(l['name']) for l in api.labels.all())
+    all_labels = set(unicode(l['name']).lower() for l in api.labels.all())
     labels = utils.ask_multichoice('Labels', choices=all_labels,
                                    default=labels, category="labels")
     date = utils.ask_choice('Date', choices=dateformats, default=date,

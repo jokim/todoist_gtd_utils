@@ -77,7 +77,8 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """Shortcut for getting a label's id"""
         if isinstance(name, (list, tuple, set)):
             return map(self.get_label_id, name)
-        for l in self.labels.all(lambda x: x['name'] == name):
+        name = name.lower()
+        for l in self.labels.all(lambda x: x['name'].lower() == name):
             # Label names must be unique, so will get max one result
             return l['id']
         raise Exception('No label with name: {}'.format(name))

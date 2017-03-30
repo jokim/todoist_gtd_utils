@@ -47,6 +47,19 @@ class TodoistGTD(todoist.api.TodoistAPI):
         except ValueError:
             return response.text
 
+    def _post(self, call, url=None, **kwargs):
+        """Override to raise HTTP errors"""
+        if not url:
+            url = self.get_api_url()
+
+        response = self.session.post(url + call, **kwargs)
+        response.raise_for_status()
+
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
+
     def search(self, query):
         """Easier search API"""
         r = self.query((query,))
@@ -66,7 +79,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
             return map(self.get_label_id, name)
         for l in self.labels.all(lambda x: x['name'] == name):
             # Label names must be unique, so will get max one result
-            return l
+            return l['id']
         raise Exception('No label with name: {}'.format(name))
 
     def get_label_humanname(self, id):

@@ -37,7 +37,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
         if not raw:
             return default
         if raw == '?':
-            print 'Choices: {}'.format(', '.join(choices))
+            print u'Choices: {}'.format(u', '.join(choices))
             continue
         raw = raw.strip()
         if not regex_choices:
@@ -68,7 +68,7 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
         if not raw:
             return default
         if raw == '?':
-            print 'Choices: {}'.format(', '.join(choices))
+            print u'Choices: {}'.format(', '.join(choices))
             continue
         raw = raw.strip()
         selections = raw.split(separator)

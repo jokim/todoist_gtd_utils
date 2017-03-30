@@ -21,6 +21,16 @@ import email.header
 from todoist.api import SyncError
 from todoist_gtd_utils import utils, TodoistGTD
 
+def do_commit(api):
+    """Make sure a commit is commited."""
+    try:
+        api.commit(raise_on_error=True)
+    except SyncError:
+        # Sometimes, the sync fails due to "Invalid temporary id
+        # (INVALID_TEMPID)". Haven't dug out the cause, but a retry most often
+        # fix the issue:
+        api.commit(raise_on_error=True)
+    return True
 
 def parse_content(api, content):
     """Get labels, projects and date out of a content string.
@@ -81,13 +91,12 @@ def gather_input(api, args):
     print content
     print
 
-    projects = set(p['name'] for p in api.projects.all())
+    projects = set(unicode(p['name']) for p in api.projects.all())
     project = utils.ask_choice('Project', choices=projects, default=project,
                                category="project")
-    all_labels = set(l['name'] for l in api.labels.all())
+    all_labels = set(unicode(l['name']) for l in api.labels.all())
     labels = utils.ask_multichoice('Labels', choices=all_labels,
                                    default=labels, category="labels")
-
     date = utils.ask_choice('Date', choices=dateformats, default=date,
                             category="date", regex_choices=True)
     return content, project, date, labels
@@ -140,12 +149,7 @@ if __name__ == '__main__':
     i = api.items.add(content, priority=1, indent=1,
                       project_id=api.get_projects_by_name(project),
                       date_string=date, labels=api.get_label_id(labels))
+    do_commit(api)
     api.notes.add(i['id'], filter_mail(args.mail))
-    try:
-        api.commit()
-    except SyncError:
-        # Sometimes, the sync fails due to "Invalid temporary id
-        # (INVALID_TEMPID)". Haven't dug out the cause, but a retry most often
-        # fix the issue:
-        api.commit()
+    do_commit(api)
     print "Item created"

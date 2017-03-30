@@ -12,5 +12,5 @@ development::
     cd todoist_gtd_utils/
     virtualenv env
     source env/bin/activate
-    pip install -r requirements
+    pip install -r requirements.txt
 

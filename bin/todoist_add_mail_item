@@ -53,8 +53,8 @@ def parse_content(api, content):
             content = content.replace('#' + p, '')
 
     # Find labels (@labelname)
-    labelnames = set(l['name'] for l in api.labels.all())
-    labels = set(l for l in re.findall('\@(\w+)', content) if l in labelnames)
+    labelnames = set(l['name'].lower() for l in api.labels.all())
+    labels = set(l for l in re.findall('\@(\w+)', content) if l.lower() in labelnames)
     for l in labels:
         content = content.replace('@' + l, '')
 

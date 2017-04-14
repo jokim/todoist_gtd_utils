@@ -14,6 +14,7 @@ TODO:
 import todoist
 
 from . import config
+from . import utils
 
 
 class TodoistGTD(todoist.api.TodoistAPI):
@@ -154,34 +155,19 @@ class TodoistGTD(todoist.api.TodoistAPI):
         return ret
 
 
-def trim_too_long(txt, size=30, suffix=u'…'):
-    """Shorten sentence, and add a suffix if too long.
-
-    :type txt: unicode or str
-    :param txt: The text to shorten
-
-    :type size: int
-    :param size: The length of result, including suffix
-
-    """
-    if len(txt) <= size:
-        return txt
-    return txt[:size-len(suffix)].rstrip() + suffix
-
-
 class HumanItem(todoist.models.Item):
     """Simpler representation of a todoist item (task)."""
 
     def __unicode__(self):
-        ret = trim_too_long(self['content'], 50)
+        ret = utils.trim_too_long(self['content'], 50)
         if self['date_string']:
             ret += ' [{}]'.format(self['date_string'])
         if self['labels']:
             labels = ' '.join(self.api.get_label_humanname(self['labels']) or
                               ())
             ret += ' ' + labels
-        ret += trim_too_long(' #' +
-                             self.api.get_project_name(self['project_id']), 30)
+        ret += utils.trim_too_long(
+                ' #' + self.api.get_project_name(self['project_id']), 30)
         return ret
 
     def __str__(self):

@@ -13,7 +13,12 @@ macro config for mutt::
 
 You will then be asked for content, project, labels and date.
 
-TODO: Add unittesting!
+TODOs:
+
+- Add unittesting!
+- Add bash coloring
+- Prettify presentation of mail headers on multiple, indented lines
+- Support signals, like CTRL+C and CTRL+D when getting input
 
 """
 
@@ -24,7 +29,8 @@ import argparse
 import email
 import email.header
 from todoist.api import SyncError
-from todoist_gtd_utils import utils, TodoistGTD
+from todoist_gtd_utils import utils
+from todoist_gtd_utils import TodoistGTD
 
 
 def do_commit(api):
@@ -93,7 +99,7 @@ def gather_input(api, args):
     content = unicode(raw_input("New task: "), 'utf-8')
     content, project, date, labels = parse_content(api, content)
 
-    print
+    print()
     # TODO: colorize invalid project and label names (# and @), to highlight
     # what looks like typos
     print(content)
@@ -110,31 +116,33 @@ def gather_input(api, args):
     return content, project, date, labels
 
 
-def filter_mail(fp):
+def get_header_in_unicode(mail, key):
+    """Return a mail's header, unicodified."""
+    return utils.trim_whitespace(
+        u' '.join(unicode(t[0], t[1] or 'latin1') for t in
+                  email.header.decode_header(mail.get(header, ''))))
+
+
+def filter_mail(mail):
     """Prettify mail content so it's easy to read in a comment.
 
     Uses Todoist's Markdown support.
 
     TODO: Fix the function! Now it's just a hack...
 
-    :type fp: file
-    :param fp: The full, raw mail, with headers.
-
     """
-    m = email.message_from_file(fp)
     ret = ''
     for header in ('Date', 'From', 'To', 'Message-Id', 'Reply-To', 'Subject',
                    'Sender'):
-        value = u' '.join(unicode(t[0], t[1] or 'latin1') for t in
-                          email.header.decode_header(m.get(header, '')))
         if header in ('Subject', 'From'):
             ret += '**'
+        value = get_header_in_unicode(mail, header)
         ret += "{}: {}".format(header, value.encode('utf-8'))
         if header in ('Subject', 'From'):
             ret += '**'
         ret += '\n'
     ret += "\n"
-    body = m.get_payload()
+    body = mail.get_payload()
     if isinstance(body, (tuple, list)):
         # TODO: Filter html etc
         ret += '\n'.join(m2.get_payload() for m2 in body)
@@ -152,8 +160,17 @@ if __name__ == '__main__':
     args = p.parse_args()
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
 
-    mail = filter_mail(args.mail)
+    mail = email.message_from_file(args.mail)
     print()
+    for header in ('Date', 'From', 'To', 'Cc', 'Subject', 'Sender'):
+        value = get_header_in_unicode(mail, header)
+        if not value:
+            continue
+        if header == 'Subject':
+            print()
+        print("{}: {}".format(header,
+                              utils.trim_too_long(value,
+                                                  size=120).encode('utf-8')))
     print()
 
     content, project, date, labels = gather_input(api, args)
@@ -163,6 +180,6 @@ if __name__ == '__main__':
                       project_id=api.get_projects_by_name(project),
                       date_string=date, labels=api.get_label_id(labels))
     do_commit(api)
-    api.notes.add(i['id'], mail)
+    api.notes.add(i['id'], filter_mail(mail))
     do_commit(api)
     print("Item created")

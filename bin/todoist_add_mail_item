@@ -37,7 +37,7 @@ from todoist_gtd_utils import TodoistGTD
 
 def signal_handler(signal, frame):
     # TODO: commit anything anywhere? A draft folder?
-    print("\nOk bye")
+    print("\nQuit, not commit")
     sys.exit(0)
 
 
@@ -168,6 +168,10 @@ if __name__ == '__main__':
     args = p.parse_args()
     global api
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
+
+    # Authenticate
+    if not api.token:
+        utils.login_dialog(api)
 
     mail = email.message_from_file(args.mail)
     print()

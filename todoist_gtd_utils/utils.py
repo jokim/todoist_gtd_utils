@@ -8,6 +8,26 @@ from __future__ import print_function
 import argparse
 import re
 import readline
+import getpass
+import requests
+
+
+def login_dialog(api):
+    """Authenticate user by asking for password."""
+    while not api.token:
+        print("Not authenticated with Todoist")
+        mail = raw_input('E-mail address: ')
+        pwd = getpass.getpass()
+        try:
+            api.user.login(mail, pwd)
+        except requests.exceptions.HTTPError, e:
+            if e.response.status_code not in (400, 401):
+                raise
+        else:
+            if api.token:
+                print("Authenticated!")
+                return True
+                # TODO: Add support for storing in .ini file (config)
 
 
 def ask_confirmation(prompt, interactive=True):

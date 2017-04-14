@@ -24,6 +24,8 @@ TODOs:
 
 from __future__ import print_function
 
+import sys
+import signal
 import re
 import argparse
 import email
@@ -31,6 +33,12 @@ import email.header
 from todoist.api import SyncError
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
+
+
+def signal_handler(signal, frame):
+    # TODO: commit anything anywhere? A draft folder?
+    print("\nOk bye")
+    sys.exit(0)
 
 
 def do_commit(api):
@@ -158,6 +166,7 @@ if __name__ == '__main__':
                    "from mutt",
                    )
     args = p.parse_args()
+    global api
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
 
     mail = email.message_from_file(args.mail)
@@ -173,6 +182,7 @@ if __name__ == '__main__':
                                                   size=120).encode('utf-8')))
     print()
 
+    signal.signal(signal.SIGINT, signal_handler)
     content, project, date, labels = gather_input(api, args)
     # Add emoji for mark that item came by email:
     content += ' :email:'

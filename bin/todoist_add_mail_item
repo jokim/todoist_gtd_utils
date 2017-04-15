@@ -26,6 +26,7 @@ from __future__ import print_function
 
 import sys
 import signal
+from threading import Thread
 import re
 import argparse
 import email
@@ -102,9 +103,8 @@ def parse_date(content):
     return content, None
 
 
-def gather_input(api, args):
+def gather_input(content, api, args):
     """Ask user for info about the new item."""
-    content = unicode(raw_input("New task: "), 'utf-8')
     content, project, date, labels = parse_content(api, content)
 
     print()
@@ -158,7 +158,20 @@ def filter_mail(mail):
         ret += body
     return ret
 
+
+def create_api(args):
+    """Setup the Todoist API.
+
+    To be called in a thread, which is why it adds the api through the `global`
+    syntax.
+
+    """
+    global api
+    api = TodoistGTD(configfiles=args.configfile, token=args.token)
+
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal_handler)
     p = utils.get_argparser(usage="%(prog)s [options] MAILFILE",
                             description=__doc__)
     p.add_argument('mail', metavar="MAILFILE", type=argparse.FileType('r'),
@@ -166,16 +179,10 @@ if __name__ == '__main__':
                    "from mutt",
                    )
     args = p.parse_args()
-    global api
-    api = TodoistGTD(configfiles=args.configfile, token=args.token)
-
-    # Authenticate
-    if not api.token:
-        utils.login_dialog(api)
 
     mail = email.message_from_file(args.mail)
     print()
-    for header in ('Date', 'From', 'To', 'Cc', 'Subject', 'Sender'):
+    for header in ('Date', 'From', 'Sender', 'To', 'Cc', 'Subject'):
         value = get_header_in_unicode(mail, header)
         if not value:
             continue
@@ -185,9 +192,16 @@ if __name__ == '__main__':
                               utils.trim_too_long(value,
                                                   size=120).encode('utf-8')))
     print()
+    t = Thread(target=create_api, name='create_api', kwargs={'args': args})
+    t.start()
+    content = unicode(raw_input("New task: "), 'utf-8')
+    t.join()
+    # Authenticate
+    if not api.token:
+        utils.login_dialog(api)
 
-    signal.signal(signal.SIGINT, signal_handler)
-    content, project, date, labels = gather_input(api, args)
+    content, project, date, labels = gather_input(content, api, args)
+
     # Add emoji for mark that item came by email:
     content += ' :email:'
     i = api.items.add(content, priority=1, indent=1,

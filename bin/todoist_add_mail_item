@@ -216,7 +216,7 @@ if __name__ == '__main__':
     content = unicode(raw_input("New task: "), 'utf-8')
     t.join()
     # Authenticate
-    if not api.token:
+    if not api.is_authenticated():
         utils.login_dialog(api)
 
     content, project, date, labels = gather_input(content, api, args)

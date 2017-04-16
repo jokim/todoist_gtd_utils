@@ -61,6 +61,14 @@ class TodoistGTD(todoist.api.TodoistAPI):
         except ValueError:
             return response.text
 
+    def is_authenticated(self):
+        """Return is user is authenticated.
+
+        TBD: Double check with server if really authenticated?
+
+        """
+        return bool(self.token)
+
     def search(self, query):
         """Easier search API"""
         r = self.query((query,))

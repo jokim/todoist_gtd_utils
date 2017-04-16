@@ -143,13 +143,13 @@ class SimpleMail(object):
         return ret
 
     def get_body(self):
-        body = self.mail.get_payload()
-        if isinstance(body, (tuple, list)):
+        # TODO: support encoding
+        if self.mail.is_multipart():
             # TODO: Filter html etc
-            return '\n'.join(p.get_payload() for p in body)
+            return '\n'.join(p.get_payload(decode=True) for p in
+                             self.mail.get_payload())
         else:
-            # TODO: decode!
-            return body
+            return self.mail.get_payload(decode=True)
 
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.

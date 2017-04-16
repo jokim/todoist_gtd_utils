@@ -37,13 +37,13 @@ from todoist_gtd_utils import TodoistGTD
 
 
 def signal_handler(signal, frame):
-    # TODO: commit anything anywhere? A draft folder?
+    """Prettier abort"""
     print("\nQuit, not commit")
     sys.exit(0)
 
 
 def do_commit(api):
-    """Make sure a commit is commited."""
+    """Make sure a commit with Todoist is commited."""
     try:
         api.commit(raise_on_error=True)
     except SyncError:
@@ -124,39 +124,64 @@ def gather_input(content, api, args):
     return content, project, date, labels
 
 
-def get_header_in_unicode(mail, key):
-    """Return a mail's header, unicodified."""
-    return utils.trim_whitespace(
-        u' '.join(unicode(t[0], t[1] or 'latin1') for t in
-                  email.header.decode_header(mail.get(header, ''))))
+class SimpleMail(object):
+    """Mail data needed for this script, in Unicode and prettified."""
 
+    def __init__(self, mailfile):
+        self.mail = email.message_from_file(mailfile)
 
-def filter_mail(mail):
-    """Prettify mail content so it's easy to read in a comment.
+    def get_header(self, key, encoding=None):
+        """Return a mail's header, unicodified."""
+        raw = self.mail.get(key)
+        if not raw:
+            return raw
+        ret = utils.trim_whitespace(
+            u' '.join(unicode(t[0], t[1] or 'latin1') for t in
+                      email.header.decode_header(raw)))
+        if encoding:
+            return ret.encode(encoding)
+        return ret
 
-    Uses Todoist's Markdown support.
+    def get_body(self):
+        body = self.mail.get_payload()
+        if isinstance(body, (tuple, list)):
+            # TODO: Filter html etc
+            return '\n'.join(p.get_payload() for p in body)
+        else:
+            # TODO: decode!
+            return body
 
-    TODO: Fix the function! Now it's just a hack...
+    def get_presentation(self, *args, **kwargs):
+        """Return a presentable formatted mail.
 
-    """
-    ret = ''
-    for header in ('Date', 'From', 'To', 'Message-Id', 'Reply-To', 'Subject',
-                   'Sender'):
-        if header in ('Subject', 'From'):
-            ret += '**'
-        value = get_header_in_unicode(mail, header)
-        ret += "{}: {}".format(header, value.encode('utf-8'))
-        if header in ('Subject', 'From'):
-            ret += '**'
-        ret += '\n'
-    ret += "\n"
-    body = mail.get_payload()
-    if isinstance(body, (tuple, list)):
-        # TODO: Filter html etc
-        ret += '\n'.join(m2.get_payload() for m2 in body)
-    else:
-        ret += body
-    return ret
+        Each *args argument could be prefixed with:
+
+        * = The header and its value should be marked with **bold**
+        _ = The header should be ignored if no value
+
+        """
+        body = kwargs.get('body', True)
+        lines = []
+        for key in args:
+            bold = optional = False
+            if key.startswith('*'):
+                key = key[1:]
+                bold = True
+            if key.startswith('_'):
+                key = key[1:]
+                optional = True
+
+            value = mail.get_header(key, 'utf-8')
+            if optional and not value:
+                continue
+            if bold:
+                lines.append('**{}: {}**'.format(key, value))
+            else:
+                lines.append("{}: {}".format(key, value))
+        if body:
+            lines.append('')
+            lines.append(mail.get_body())
+        return '\n'.join(lines)
 
 
 def create_api(args):
@@ -179,19 +204,13 @@ if __name__ == '__main__':
                    "from mutt",
                    )
     args = p.parse_args()
+    mail = SimpleMail(args.mail)
 
-    mail = email.message_from_file(args.mail)
     print()
-    for header in ('Date', 'From', 'Sender', 'To', 'Cc', 'Subject'):
-        value = get_header_in_unicode(mail, header)
-        if not value:
-            continue
-        if header == 'Subject':
-            print()
-        print("{}: {}".format(header,
-                              utils.trim_too_long(value,
-                                                  size=120).encode('utf-8')))
+    print(mail.get_presentation('Date', 'From', '_Sender', 'To', 'Cc',
+                                'Subject', body=False))
     print()
+
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
     t.start()
     content = unicode(raw_input("New task: "), 'utf-8')
@@ -208,6 +227,8 @@ if __name__ == '__main__':
                       project_id=api.get_projects_by_name(project),
                       date_string=date, labels=api.get_label_id(labels))
     do_commit(api)
-    api.notes.add(i['id'], filter_mail(mail))
+    api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
+                                                 'Message-Id', '_Reply-To',
+                                                 '*Subject', '_Sender'))
     do_commit(api)
     print("Item created")

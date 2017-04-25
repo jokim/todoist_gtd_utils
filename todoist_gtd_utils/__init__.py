@@ -80,7 +80,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """Shortcut for getting a label's name"""
         if isinstance(id, (list, tuple, set)):
             return map(self.get_label_name, id)
-        return self.labels.get_by_id(id)['name']
+        return self.labels.all(lambda x: x['id'] == id)[0]['name']
 
     def get_label_id(self, name):
         """Shortcut for getting a label's id"""
@@ -100,7 +100,9 @@ class TodoistGTD(todoist.api.TodoistAPI):
 
     def get_project_name(self, id):
         """Shortcut for getting a project's name"""
-        return self.projects.get_by_id(id)['name'].strip()
+        if isinstance(id, (list, tuple, set)):
+            return map(self.get_project_name, id)
+        return self.projects.all(lambda x: x['id'] == id)[0]['name'].strip()
 
     def get_projects_by_name(self, name, raise_on_duplicate=True):
         """Find a project by its given name.

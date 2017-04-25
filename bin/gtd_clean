@@ -13,7 +13,7 @@ def remove_labels_in_someday(api):
     child_pr = list(api.get_child_projects(proj))
     child_pr_ids = set(p['id'] for p in child_pr)
 
-    items = api.items.all(lambda x: x['project_id'] in child_pr_ids)
+    items = api.items.all(lambda x: x['id'] in child_pr_ids)
 
     for i in items:
         labels_to_remove = set(i['labels']) - ignore_l_ids

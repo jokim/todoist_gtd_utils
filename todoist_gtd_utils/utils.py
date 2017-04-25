@@ -30,9 +30,16 @@ def login_dialog(api):
                 # TODO: Add support for storing in .ini file (config)
 
 
-def ask_confirmation(prompt, interactive=True):
-    """Return True if user confirms prompt"""
-    if not interactive:
+def ask_confirmation(prompt, args=None):
+    """Return True if user confirms prompt
+
+    :type args: argparse.Namespace
+    :param args:
+        The parsed arguments from `argparse.ArgumentPaser`, to search for if
+        the user has set `--assume-yes`, for less interaction.
+
+    """
+    if args and getattr(args, 'assume_yes'):
         return True
     ret = raw_input(unicode(prompt + u" (y/N): ").encode('utf8'))
     return ret == 'y'
@@ -146,6 +153,7 @@ def get_argparser(*args, **kwargs):
     p.add_argument('--configfile', help="Change path to config file",
                    default='~/.todoist_gtd_utils.ini')
     p.add_argument('--token', help="API token to user for user")
+    p.add_argument('--assume-yes', help="Assume yes on non-critical decisions")
     return p
 
 

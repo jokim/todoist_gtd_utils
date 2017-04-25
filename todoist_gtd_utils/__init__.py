@@ -172,12 +172,14 @@ class HumanItem(todoist.models.Item):
         ret = utils.trim_too_long(self['content'], 50)
         if self['date_string']:
             ret += ' [{}]'.format(self['date_string'])
+        ret += " ("
         if self['labels']:
             labels = ' '.join(self.api.get_label_humanname(self['labels']) or
                               ())
             ret += ' ' + labels
         ret += utils.trim_too_long(
                 ' #' + self.api.get_project_name(self['project_id']), 30)
+        ret += ")"
         return ret
 
     def __str__(self):

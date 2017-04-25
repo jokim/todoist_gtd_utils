@@ -219,16 +219,24 @@ if __name__ == '__main__':
     if not api.is_authenticated():
         utils.login_dialog(api)
 
-    content, project, date, labels = gather_input(content, api, args)
+    while True:
+        content, project, date, labels = gather_input(content, api, args)
 
-    # Add emoji for mark that item came by email:
-    content += ' :email:'
-    i = api.items.add(content, priority=1, indent=1,
-                      project_id=api.get_projects_by_name(project),
-                      date_string=date, labels=api.get_label_id(labels))
-    do_commit(api)
-    api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
-                                                 'Message-Id', '_Reply-To',
-                                                 '*Subject', '_Sender'))
-    do_commit(api)
-    print("Item created")
+        # Add emoji for mark that item came by email:
+        content += ' :email:'
+        i = api.items.add(content, priority=1, indent=1,
+                          project_id=api.get_projects_by_name(project)['id'],
+                          date_string=date, labels=api.get_label_id(labels))
+        print("\nNew item:\n{}\n".format(i))
+        if utils.ask_confirmation("Okay to create?", args):
+            do_commit(api)
+            api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
+                                                         'Message-Id',
+                                                         '_Reply-To',
+                                                         '*Subject',
+                                                         '_Sender'))
+            do_commit(api)
+            print("\nItem created")
+            break
+        else:
+            print("\nGoing all over again...\n")

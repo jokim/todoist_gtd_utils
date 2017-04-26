@@ -19,6 +19,8 @@ For ease of use, add a config file::
 
     python todoist_gtd_utils/config.py > ~/.todoist_gtd_utils.ini
     # edit file with own settings
+    vim ~/.todoist_gtd_utils.ini
+
 
 Add a macro to mutt, for instance when pressing "GG"::
 

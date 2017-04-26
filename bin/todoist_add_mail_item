@@ -219,6 +219,8 @@ if __name__ == '__main__':
     if not api.is_authenticated():
         utils.login_dialog(api)
 
+    api.sync()
+
     while True:
         content, project, date, labels = gather_input(content, api, args)
 

@@ -229,7 +229,7 @@ if __name__ == '__main__':
         i = api.items.add(content, priority=1, indent=1,
                           project_id=api.get_projects_by_name(project)['id'],
                           date_string=date, labels=api.get_label_id(labels))
-        print("\nNew item:\n{}\n".format(i))
+        print(u"\nNew item:\n{}\n".format(i))
         if utils.ask_confirmation("Okay to create?", args):
             do_commit(api)
             api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',

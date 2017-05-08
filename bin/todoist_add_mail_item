@@ -22,6 +22,7 @@ TODOs:
 
 """
 
+from __future__ import unicode_literals
 from __future__ import print_function
 
 import sys
@@ -130,17 +131,14 @@ class SimpleMail(object):
     def __init__(self, mailfile):
         self.mail = email.message_from_file(mailfile)
 
-    def get_header(self, key, encoding=None):
+    def get_header(self, key):
         """Return a mail's header, unicodified."""
         raw = self.mail.get(key)
         if not raw:
             return raw
-        ret = utils.trim_whitespace(
-            u' '.join(unicode(t[0], t[1] or 'latin1') for t in
-                      email.header.decode_header(raw)))
-        if encoding:
-            return ret.encode(encoding)
-        return ret
+        return utils.trim_whitespace(
+            ' '.join(unicode(t[0], t[1] or 'latin1') for t in
+                     email.header.decode_header(raw)))
 
     def get_body(self):
         # TODO: support encoding
@@ -149,7 +147,8 @@ class SimpleMail(object):
             return '\n'.join(p.get_payload(decode=True) for p in
                              self.mail.get_payload())
         else:
-            return self.mail.get_payload(decode=True)
+            return unicode(self.mail.get_payload(decode=True),
+                           self.mail.get_content_charset())
 
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.
@@ -171,13 +170,13 @@ class SimpleMail(object):
                 key = key[1:]
                 optional = True
 
-            value = mail.get_header(key, 'utf-8')
+            value = mail.get_header(key)
             if optional and not value:
                 continue
             if bold:
                 lines.append('**{}: {}**'.format(key, value))
             else:
-                lines.append("{}: {}".format(key, value))
+                lines.append('{}: {}'.format(key, value))
         if body:
             lines.append('')
             lines.append(mail.get_body())
@@ -229,7 +228,7 @@ if __name__ == '__main__':
         i = api.items.add(content, priority=1, indent=1,
                           project_id=api.get_projects_by_name(project)['id'],
                           date_string=date, labels=api.get_label_id(labels))
-        print(u"\nNew item:\n{}\n".format(i))
+        print("\nNew item:\n{}\n".format(i))
         if utils.ask_confirmation("Okay to create?", args):
             do_commit(api)
             api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',

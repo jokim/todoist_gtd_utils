@@ -1,0 +1,74 @@
+#!/bin/env python
+# -*- encoding: utf-8 -*-
+
+""" A curses frontend for Todoist.
+
+A somewhat simple use of curses for a more efficient frontend for the Todoist,
+for getting my work done. Might be something usable, or it might not.
+
+TODOs:
+
+- A lot!
+
+"""
+
+from __future__ import print_function
+
+import sys
+import curses
+import signal
+from threading import Thread
+
+from todoist.api import SyncError
+from todoist_gtd_utils import utils
+from todoist_gtd_utils import TodoistGTD
+
+
+class TodoistCli(object):
+
+    def setup_layout(self):
+        """Setup the basic layout of the main windows"""
+        stdscr = self.stdscr
+        maxy, maxx = stdscr.getmaxyx()
+
+        # Create status bar at top
+        self.wintop = stdscr.derwin(1, maxx, 0, 0)
+        self.wintop.addstr(0, 0, "Todoist CLI")
+        # TODO: Add color to top bar
+
+        # Create status bar at bottom
+        self.winbottom = stdscr.derwin(1, maxx, maxy-1, 0)
+
+        # Create windows for project overview
+        self.winproject = stdscr.derwin(maxy-2, maxx/2, 1, 0)
+
+    def set_status(self, msg):
+        """Set a status message in the windows, somewhere"""
+        self.winbottom.addstr(0, 0, msg, curses.color_pair(0))
+        self.winbottom.clrtoeol()
+        self.winbottom.refresh()
+
+    def run(self, stdscr):
+        """The main curses handler"""
+        self.stdscr = stdscr
+        self.setup_layout()
+
+        while True:
+            c = stdscr.getch()
+            if c == ord('j'):
+                self.set_status("Going down")
+                # Go down one item
+                pass
+            elif c == ord('k'):
+                # Go up one item
+                self.set_status("Going up")
+                pass
+            elif c == ord('q'):
+                break  # Exit the while()
+            elif c == curses.KEY_HOME:
+                pass
+
+
+if __name__ == '__main__':
+    cli = TodoistCli()
+    curses.wrapper(cli.run)

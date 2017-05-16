@@ -145,7 +145,7 @@ class SimpleMail(object):
         if self.mail.is_multipart():
             # TODO: Filter html etc
             return '\n'.join(p.get_payload(decode=True) for p in
-                             self.mail.get_payload())
+                             self.mail.get_payload() if p)
         else:
             return unicode(self.mail.get_payload(decode=True),
                            self.mail.get_content_charset())

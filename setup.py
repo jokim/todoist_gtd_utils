@@ -19,11 +19,18 @@
 # todoist_gtd_utils; if not, write to the Free Software Foundation, Inc., 59
 # Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
-from setuptools import setup
+import io
+from os.path import join
+from os.path import dirname
 
-def readme():
-    with open('README.rst') as f:
-        return f.read()
+from setuptools import setup
+from setuptools import find_packages
+
+def read(*filename, **kwargs):
+    return io.open(
+        join(dirname(__file__), *filename),
+        encoding=kwargs.get('encoding', 'utf8')
+    ).read()
 
 def get_requirements(filename):
     """ Read requirements from file. """
@@ -33,21 +40,26 @@ def get_requirements(filename):
             if req_line:
                 yield req_line
 
-setup(name='todoist_gtd_utils',
-      version='0.1',
-      description="Utility fixes for when forcing GTD in Todoist",
-      long_description=readme(),
-      url="example.com",
-      author="Joakim S. Hovlandsvåg",
-      author_email="joakim.hovlandsvag@gmail.com",
-      license="GPLv3",
-      packages=['todoist_gtd_utils'],
-      install_requires=list(get_requirements('requirements.txt')),
-      scripts=[
-          'bin/gtd_clean',
-          'bin/todoist_add_mail_item',
-          ],
-      include_package_data=True,
-      #zip_safe=False,
-      )
-
+setup(
+    name='todoist_gtd_utils',
+    version='0.2',
+    description="Utility fixes for when forcing GTD in Todoist",
+    long_description=read('README.rst'),
+    url="https://github.com/jokim/todoist_gtd_utils",
+    author="Joakim S. Hovlandsvåg",
+    author_email="joakim.hovlandsvag@gmail.com",
+    license="GPLv3",
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
+    #py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
+    install_requires=list(get_requirements('requirements.txt')),
+    scripts=[
+        'bin/gtd_clean',
+        'bin/todoist_add_mail_item',
+        ],
+    include_package_data=True,
+    zip_safe=False,
+    #classifiers=[  http://pypi.python.org/pypi?%3Aaction=list_classifiers
+    #keywords=[],
+    #extra_require=[],
+    )

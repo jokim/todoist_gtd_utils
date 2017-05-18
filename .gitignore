@@ -7,4 +7,6 @@
 /sdist/
 *.egg
 *.eggs/
-/*.egg-info
+*.egg-info
+.cache
+.tox

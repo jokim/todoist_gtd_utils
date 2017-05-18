@@ -1,3 +1,10 @@
+graft src
+graft tests
+
 include README.rst
 include requirements.txt
 include LICENSE
+
+include tox.ini
+
+global-exclude *.py[cod] __pycache__ *.so *.dylib

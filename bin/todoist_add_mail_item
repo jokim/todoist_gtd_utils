@@ -30,9 +30,9 @@ import signal
 from threading import Thread
 import re
 import argparse
-import email
-import email.header
 from todoist.api import SyncError
+import todoist_gtd_utils
+import todoist_gtd_utils.mail
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 
@@ -125,64 +125,6 @@ def gather_input(content, api, args):
     return content, project, date, labels
 
 
-class SimpleMail(object):
-    """Mail data needed for this script, in Unicode and prettified."""
-
-    def __init__(self, mailfile):
-        self.mail = email.message_from_file(mailfile)
-
-    def get_header(self, key):
-        """Return a mail's header, unicodified."""
-        raw = self.mail.get(key)
-        if not raw:
-            return raw
-        return utils.trim_whitespace(
-            ' '.join(unicode(t[0], t[1] or 'latin1') for t in
-                     email.header.decode_header(raw)))
-
-    def get_body(self):
-        # TODO: support encoding
-        if self.mail.is_multipart():
-            # TODO: Filter html etc
-            return '\n'.join(p.get_payload(decode=True) for p in
-                             self.mail.get_payload() if p)
-        else:
-            return unicode(self.mail.get_payload(decode=True),
-                           self.mail.get_content_charset())
-
-    def get_presentation(self, *args, **kwargs):
-        """Return a presentable formatted mail.
-
-        Each *args argument could be prefixed with:
-
-        * = The header and its value should be marked with **bold**
-        _ = The header should be ignored if no value
-
-        """
-        body = kwargs.get('body', True)
-        lines = []
-        for key in args:
-            bold = optional = False
-            if key.startswith('*'):
-                key = key[1:]
-                bold = True
-            if key.startswith('_'):
-                key = key[1:]
-                optional = True
-
-            value = mail.get_header(key)
-            if optional and not value:
-                continue
-            if bold:
-                lines.append('**{}: {}**'.format(key, value))
-            else:
-                lines.append('{}: {}'.format(key, value))
-        if body:
-            lines.append('')
-            lines.append(mail.get_body())
-        return '\n'.join(lines)
-
-
 def create_api(args):
     """Setup the Todoist API.
 
@@ -192,7 +134,8 @@ def create_api(args):
     """
     global api
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
-
+    if api.is_authenticated():
+        api.sync()
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
@@ -203,7 +146,7 @@ if __name__ == '__main__':
                    "from mutt",
                    )
     args = p.parse_args()
-    mail = SimpleMail(args.mail)
+    mail = todoist_gtd_utils.mail.SimpleMail(args.mail)
 
     print()
     print(mail.get_presentation('Date', 'From', '_Sender', 'To', 'Cc',
@@ -217,8 +160,7 @@ if __name__ == '__main__':
     # Authenticate
     if not api.is_authenticated():
         utils.login_dialog(api)
-
-    api.sync()
+        api.sync()
 
     while True:
         content, project, date, labels = gather_input(content, api, args)

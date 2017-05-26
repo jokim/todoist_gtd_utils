@@ -33,7 +33,7 @@ class SimpleMailParser(object):
         if not raw:
             return raw
         return utils.trim_whitespace(
-            ' '.join(unicode(t[0], t[1] or 'latin1') for t in
+            ' '.join(unicode(t[0], t[1] or 'latin1', 'replace') for t in
                      email.header.decode_header(raw)))
 
     def get_body(self):
@@ -45,7 +45,7 @@ class SimpleMailParser(object):
         else:
             return unicode(self.mail.get_payload(decode=True),
                            self.mail.get_content_charset() or
-                           self.default_encoding)
+                           self.default_encoding, 'replace')
 
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.

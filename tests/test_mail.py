@@ -63,7 +63,7 @@ Joakim
 """
 
 raw_mail_invalid_encoded = """Received: from someone (some.ip.address.) with someserver
-From: =?utf-8?Q?Joakim_Hovlandsv=E5g?= <joakim.hovlandsvag@gmail.com>
+From: =?utf-8?Q?Jo=C3=A5kim_Hovlandsv=E5g?= <joakim.hovlandsvag@gmail.com>
 To: =?iso-8859-1?Q?Joakim_Hovlandsv=C3=A5g?= <joakim.hovlandsvag@gmail.com>
 Subject: =?iso-8859-1?Q?RE:_S=F8knad_is_a_word?=
 Message-ID: <eee2@mail.gmail.com>
@@ -136,3 +136,12 @@ def test_utf8_mail():
 
 def test_invalid_encoding():
     """Don't crash if mail is not encoded properly"""
+    p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(raw_mail_invalid_encoded))
+    body = p.get_body()
+    assert 'å' in body
+    pres = p.get_presentation('from', 'to', body=False)
+    assert 'å' in pres
+
+def test_multipart():
+    pass
+    # TODO

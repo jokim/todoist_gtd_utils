@@ -146,7 +146,7 @@ if __name__ == '__main__':
                    "from mutt",
                    )
     args = p.parse_args()
-    mail = todoist_gtd_utils.mail.SimpleMail(args.mail)
+    mail = todoist_gtd_utils.mail.SimpleMailParser(args.mail)
 
     print()
     print(mail.get_presentation('Date', 'From', '_Sender', 'To', 'Cc',

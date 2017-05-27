@@ -14,6 +14,7 @@ import email
 import email.header
 
 from todoist_gtd_utils import utils
+from todoist_gtd_utils.utils import to_unicode
 
 
 class SimpleMailParser(object):
@@ -33,19 +34,33 @@ class SimpleMailParser(object):
         if not raw:
             return raw
         return utils.trim_whitespace(
-            ' '.join(unicode(t[0], t[1] or 'latin1', 'replace') for t in
+            ' '.join(to_unicode(t[0], t[1] or 'latin1', 'replace') for t in
                      email.header.decode_header(raw)))
+
+    def get_decoded_payload(self, p):
+        """Try to return a unicodified payload.
+
+        Should accept badly encoded data without failing.
+
+        """
+        charset = p.get_content_charset() or self.default_encoding
+        try:
+            return to_unicode(p.get_payload(decode=True), charset, 'replace')
+        except UnicodeEncodeError:
+            load = to_unicode(p.get_payload(decode=False), charset, 'replace')
+            cte = self.mail.get('content-transfer-encoding', '').lower()
+            if cte == 'quoted-printable':
+                return utils.decode_quoted_printable(load, header=0)
+            return load
 
     def get_body(self):
         # TODO: support encoding
         if self.mail.is_multipart():
             # TODO: Filter html etc
-            return '\n'.join(p.get_payload(decode=True) for p in
-                             self.mail.get_payload() if p)
+            return '\n'.join(self.get_decoded_payload(p) for p in
+                             self.mail.get_payload())
         else:
-            return unicode(self.mail.get_payload(decode=True),
-                           self.mail.get_content_charset() or
-                           self.default_encoding, 'replace')
+            return self.get_decoded_payload(self.mail)
 
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.

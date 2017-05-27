@@ -3,6 +3,7 @@
 
 """Utility functions for utility project."""
 
+from __future__ import unicode_literals
 from __future__ import print_function
 
 import argparse
@@ -10,6 +11,15 @@ import re
 import readline
 import getpass
 import requests
+from quopri import ishex
+from quopri import unhex
+
+
+def to_unicode(input, encoding, errors):
+    """Shortcut for decoding to unicode"""
+    if isinstance(input, unicode):
+        return input
+    return unicode(input, encoding, errors)
 
 
 def login_dialog(api):
@@ -175,3 +185,59 @@ def trim_too_long(txt, size=30, suffix=u'…'):
     if len(txt) <= size:
         return txt
     return txt[:size-len(suffix)].rstrip() + suffix
+
+
+def decode_quoted_printable(input, header=0, encoding='utf-8'):
+    """As quopri.decodestring, but with Unicode support.
+
+    This is mainly a copy quopri.decodestring, slightly rewritten just to
+    support unicode, and in a hackish way!
+
+    TODO: Are there libraries that support this in unicode to rely on instead?
+
+    """
+    ESCAPE = '='
+    ret = []
+    new = bytearray()
+    for line in input.split('\n'):
+        if not line:
+            # TODO: wat?
+            break
+        i = 0
+        n = len(line)
+        if line.endswith('\n'):
+            partial = 0
+            n = n-1
+            # Strip trailing whitespace
+            while n > 0 and line[n-1] in " \t\r":
+                n = n-1
+        else:
+            partial = 1
+
+        while i < n:
+            c = line[i]
+            if c == '_' and header:
+                new += bytearray(' ', encoding)
+                i = i+1
+            elif c != ESCAPE:
+                new += bytearray(c, encoding)
+                i = i+1
+            elif i+1 == n and not partial:
+                partial = 1
+                break
+            elif i+1 < n and line[i+1] == ESCAPE:
+                new += bytearray(ESCAPE, encoding)
+                i = i+2
+            elif i+2 < n and ishex(line[i+1]) and ishex(line[i+2]):
+                new.append(unhex(line[i+1:i+3]))
+                i = i+3
+            else:
+                # Bad escape sequence -- leave it in
+                new += bytearray(c, encoding)
+                i = i+1
+        if not partial:
+            ret.append(new.decode(encoding))
+            new = bytearray()
+    if new:
+        ret.append(new.decode(encoding))
+    return '\n'.join(ret)

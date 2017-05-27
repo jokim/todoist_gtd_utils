@@ -31,7 +31,7 @@ Joakim
 raw_mail_latin1 = """Received: from someone (some.ip.address.) with someserver
 From: Joakim <joakim.hovlandsvag@gmail.com>
 To: =?iso-8859-1?Q?Joakim_Hovlandsv=E5g?= <joakim.hovlandsvag@gmail.com>
-Subject: =?iso-8859-1?Q?RE:_S=F8knad_is_a_word?=
+Subject: =?iso-8859-1?Q?RE:_S=F8k_is_a_word?=
 Date: Thu, 25 May 2017 14:11:26 +0200
 Message-ID: <eaeaeaeae0010100110@mail.gmail.com>
 Content-Type: text/plain; charset="iso-8859-1"
@@ -48,7 +48,7 @@ Joakim
 raw_mail_utf8 = """Received: from someone (some.ip.address.) with someserver
 From: =?utf-8?Q?Joakim_Hovlandsv=C3=A5g?= <joakim.hovlandsvag@gmail.com>
 To: =?iso-8859-1?Q?Joakim_Hovlandsv=E5g?= <joakim.hovlandsvag@gmail.com>
-Subject: =?iso-8859-1?Q?RE:_S=F8knad_is_a_word?=
+Subject: =?iso-8859-1?Q?RE:_S=F8k_is_a_word?=
 Date: Thu, 25 May 2017 14:11:26 +0200
 Message-ID: <eee2@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
@@ -56,6 +56,8 @@ Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
 
 New test, with =C3=A6 and =C3=A5!
+
+Even more special: © ▶
 
 --
 Joakim
@@ -65,7 +67,7 @@ Joakim
 raw_mail_invalid_encoded = """Received: from someone (some.ip.address.) with someserver
 From: =?utf-8?Q?Jo=C3=A5kim_Hovlandsv=E5g?= <joakim.hovlandsvag@gmail.com>
 To: =?iso-8859-1?Q?Joakim_Hovlandsv=C3=A5g?= <joakim.hovlandsvag@gmail.com>
-Subject: =?iso-8859-1?Q?RE:_S=F8knad_is_a_word?=
+Subject: =?iso-8859-1?Q?RE:_S=F8k_is_a_word?=
 Message-ID: <eee2@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
@@ -78,7 +80,63 @@ Joakim
 
 """
 
-raw_mail_multipart = """TODO
+raw_mail_multipart = """Received: from example.com (2001:1000:500:50::6) ...
+From: =?utf-8?Q?Joakim_Hovlandsv=C3=A5g?= <joakim.hovlandsvag@gmail.com>
+To: =?iso-8859-1?Q?Joakim_Hovlandsv=E5g?= <joakim.hovlandsvag@gmail.com>
+Subject: =?iso-8859-1?Q?RE:_S=F8k_is_a_word?=
+Message-ID: <multipart-001@example.com>
+Date: Fri, 26 May 2017 09:08:01 +0000
+Content-Type: multipart/alternative; charset="UTF-8"; boundary="randomstring"
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+
+--randomstring
+Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+View this email in your browser
+https://example.com/12345.
+
+This is a plaintext title
+
+This is a paragraph where you should've seen a plaintext representation of the
+e-mail.
+
+Extra: =C3=A6 and =C3=A5! Special: © ▶
+
+Invalid content: =F8 and =E5!
+
+--
+Joakim Hovlandsvag # TODO: Add proper encoded unicode
+
+--randomstring
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+. { color: black; background-color: white }
+</style>
+<title>This is a title</title>
+</head>
+<body>
+<h1>This is an HTML title</h1>
+
+<p>This is a <em>fancy paragraph</em> where you should see a pretty
+representation of the e-mail.</p>
+
+<p>Extra content: &aring;, =C3=A6 and =C3=A5! Special: © ▶</p>
+
+<p>Invalid content: =F8 and =E5</p>
+
+<hr>
+
+</body>
+</html>
+
+--randomstring--
+
 """
 
 raw_mail_html = """TODO
@@ -136,12 +194,24 @@ def test_utf8_mail():
 
 def test_invalid_encoding():
     """Don't crash if mail is not encoded properly"""
-    p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(raw_mail_invalid_encoded))
+    p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(
+                    raw_mail_invalid_encoded))
     body = p.get_body()
     assert 'å' in body
     pres = p.get_presentation('from', 'to', body=False)
     assert 'å' in pres
 
+
 def test_multipart():
-    pass
-    # TODO
+    p = todoist_gtd_utils.mail.SimpleMailParser(
+            io.StringIO(raw_mail_multipart))
+    body = p.get_body()
+    print body
+    assert 'plaintext title' in body
+    assert 'HTML title' in body
+    pres = p.get_presentation('from', 'to', body=False)
+    print pres
+    pres = p.get_presentation('from')
+    assert "Joakim Hovlandsvåg" in pres
+    pres = p.get_presentation('to')
+    assert "Joakim Hovlandsvåg" in pres

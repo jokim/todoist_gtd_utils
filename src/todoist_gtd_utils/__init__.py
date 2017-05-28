@@ -168,21 +168,25 @@ class TodoistGTD(todoist.api.TodoistAPI):
 class HumanItem(todoist.models.Item):
     """Simpler representation of a todoist item (task)."""
 
-    def __unicode__(self):
-        ret = utils.trim_too_long(self['content'], 50)
-        if self['date_string']:
-            ret += ' [{}]'.format(self['date_string'])
+    def get_short_preview(self):
+        ret = utils.trim_too_long(self.data.get('content'), 80)
+        if 'date_string' in self.data:
+            ret += ' [{}]'.format(self['date_string'] or '')
         ret += " ("
-        if self['labels']:
+        if 'labels' in self.data:
             labels = ' '.join(self.api.get_label_humanname(self['labels']) or
                               ())
-            ret += ' ' + labels
-        ret += utils.trim_too_long(
-                ' #' + self.api.get_project_name(self['project_id']), 30)
+            ret += labels
+        if 'project_id' in self.data:
+            ret += utils.trim_too_long(
+                    ' #' + self.api.get_project_name(self['project_id']), 30)
         ret += ")"
         return ret
 
+    def __unicode__(self):
+        return self.get_short_preview()
+
     def __str__(self):
-        return self.__unicode__()
+        return self.get_short_preview()
 
 todoist.models.Item = HumanItem

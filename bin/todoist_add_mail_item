@@ -180,6 +180,9 @@ if __name__ == '__main__':
                                                          '_Sender'))
             do_commit(api)
             print("\nItem created")
+            api.sync()
+            new = api.items.all(lambda x: x['id'] == i['id'])[0]
+            print(new)
             break
         else:
             print("\nGoing all over again...\n")

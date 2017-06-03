@@ -168,10 +168,29 @@ class TodoistGTD(todoist.api.TodoistAPI):
 class HumanItem(todoist.models.Item):
     """Simpler representation of a todoist item (task)."""
 
+    def get_frontend_pri(self):
+        """Return priority in frontend's perspective.
+
+        The API considers 4 as the highest priority, while the frontend
+        considers that as 1.
+
+        """
+        p = self['priority']
+        if p == 4:
+            return 1
+        if p == 3:
+            return 2
+        if p == 2:
+            return 3
+        return 4
+
     def get_short_preview(self):
-        ret = utils.trim_too_long(self.data.get('content'), 80)
-        if 'date_string' in self.data:
+        ret = utils.trim_too_long(self.data.get('content'), 100)
+        if self.data.get('date_string'):
             ret += ' [{}]'.format(self['date_string'] or '')
+        pri = self.get_frontend_pri()
+        if pri < 4:
+            ret += ' !!{}'.format(pri)
         ret += " ("
         if 'labels' in self.data:
             labels = ' '.join(self.api.get_label_humanname(self['labels']) or

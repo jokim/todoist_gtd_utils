@@ -36,3 +36,13 @@ def test_decode_quoted_printable_headers():
     for test, answer in tests:
         ret = utils.decode_quoted_printable(test, True)
         assert ret == answer
+
+
+def test_prioriy_conversion():
+    for (input, api_pri) in ((1, 4), (2, 3), (3, 2), (4, 1)):
+        assert utils.frontend_priority_to_api(input) == api_pri
+
+
+def test_prioriy_as_string():
+    for (input, api_pri) in (('1', 4), ('2', 3), ('3', 2), ('4', 1)):
+        assert utils.frontend_priority_to_api(input) == api_pri

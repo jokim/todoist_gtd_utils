@@ -241,3 +241,18 @@ def decode_quoted_printable(input, header=0, encoding='utf-8'):
     if new:
         ret.append(new.decode(encoding))
     return '\n'.join(ret)
+
+
+def frontend_priority_to_api(pri):
+    """Return the priority as the API considers it."""
+    try:
+        pri = int(pri)
+    except ValueError:
+        return 1
+    if pri == 1:
+        return 4
+    if pri == 2:
+        return 3
+    if pri == 3:
+        return 2
+    return 1

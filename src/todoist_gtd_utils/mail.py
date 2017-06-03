@@ -12,9 +12,12 @@ from __future__ import unicode_literals
 
 import email
 import email.header
+from quopri import ishex
+from quopri import unhex
 
 from todoist_gtd_utils import utils
 from todoist_gtd_utils.utils import to_unicode
+import todoist_gtd_utils.mail
 
 
 class SimpleMailParser(object):
@@ -50,7 +53,8 @@ class SimpleMailParser(object):
             load = to_unicode(p.get_payload(decode=False), charset, 'replace')
             cte = self.mail.get('content-transfer-encoding', '').lower()
             if cte == 'quoted-printable':
-                return utils.decode_quoted_printable(load, header=0)
+                return todoist_gtd_utils.mail.decode_quoted_printable(load,
+                                                                      header=0)
             return load
 
     def get_body(self):
@@ -93,3 +97,59 @@ class SimpleMailParser(object):
             lines.append('')
             lines.append(self.get_body())
         return '\n'.join(lines)
+
+
+def decode_quoted_printable(input, header=0, encoding='utf-8'):
+    """As quopri.decodestring, but with Unicode support.
+
+    This is mainly a copy quopri.decodestring, slightly rewritten just to
+    support unicode, and in a hackish way!
+
+    TODO: Are there libraries that support this in unicode to rely on instead?
+
+    """
+    ESCAPE = '='
+    ret = []
+    new = bytearray()
+    for line in input.split('\n'):
+        if not line:
+            # TODO: wat?
+            break
+        i = 0
+        n = len(line)
+        if line.endswith('\n'):
+            partial = 0
+            n = n-1
+            # Strip trailing whitespace
+            while n > 0 and line[n-1] in " \t\r":
+                n = n-1
+        else:
+            partial = 1
+
+        while i < n:
+            c = line[i]
+            if c == '_' and header:
+                new += bytearray(' ', encoding)
+                i = i+1
+            elif c != ESCAPE:
+                new += bytearray(c, encoding)
+                i = i+1
+            elif i+1 == n and not partial:
+                partial = 1
+                break
+            elif i+1 < n and line[i+1] == ESCAPE:
+                new += bytearray(ESCAPE, encoding)
+                i = i+2
+            elif i+2 < n and ishex(line[i+1]) and ishex(line[i+2]):
+                new.append(unhex(line[i+1:i+3]))
+                i = i+3
+            else:
+                # Bad escape sequence -- leave it in
+                new += bytearray(c, encoding)
+                i = i+1
+        if not partial:
+            ret.append(new.decode(encoding))
+            new = bytearray()
+    if new:
+        ret.append(new.decode(encoding))
+    return '\n'.join(ret)

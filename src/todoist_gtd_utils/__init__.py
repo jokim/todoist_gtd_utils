@@ -12,6 +12,7 @@ TODO:
 """
 
 import todoist
+from todoist.api import SyncError
 
 from . import config
 from . import utils
@@ -163,6 +164,20 @@ class TodoistGTD(todoist.api.TodoistAPI):
                 else:
                     found = False
         return ret
+
+    def force_commit(self):
+        """Make sure a commit with Todoist is commited.
+
+        Sometimes, the sync fails due to "Invalid temporary id
+        (INVALID_TEMPID)". Haven't dug out the cause, but a retry most often
+        fix the issue:
+
+        """
+        try:
+            self.commit(raise_on_error=True)
+        except SyncError:
+            self.commit(raise_on_error=True)
+        return True
 
 
 class HumanItem(todoist.models.Item):

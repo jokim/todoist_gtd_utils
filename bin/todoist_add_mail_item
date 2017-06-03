@@ -28,13 +28,12 @@ from __future__ import print_function
 import sys
 import signal
 from threading import Thread
-import re
 import argparse
-from todoist.api import SyncError
 import todoist_gtd_utils
 import todoist_gtd_utils.mail
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
+from todoist_gtd_utils import userinput
 
 
 def signal_handler(signal, frame):
@@ -43,91 +42,10 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
-def do_commit(api):
-    """Make sure a commit with Todoist is commited."""
-    try:
-        api.commit(raise_on_error=True)
-    except SyncError:
-        # Sometimes, the sync fails due to "Invalid temporary id
-        # (INVALID_TEMPID)". Haven't dug out the cause, but a retry most often
-        # fix the issue:
-        api.commit(raise_on_error=True)
-    return True
-
-
-def parse_content(api, content):
-    """Get labels, projects and date out of a content string.
-
-    NOT as advanced as Todoist own parser. Does for instance not support
-    white space in labels and projects.
-
-    :rtype: list
-    :return:
-        The different parts that an item could consist of:
-
-        1. The content, where the other parts have been stripped out.
-        2. Project, if set. By it's project name, for now. Defaults to Inbox. #
-           TODO: Change to project id!
-        3. Date, if set. Only a limited format are accepted here, not all
-           supported by Todoist.
-        4. Labels, if set. Returned by its label names.
-        5. Priority, in the range 1 (highest) to 4 (default, lowest).
-
-    """
-    # Find project (#projectname)
-    project = "Inbox"
-    r = re.search('#(\w+)', content)
-    if r:
-        p = r.groups()[0]
-        try:
-            api.get_projects_by_name(p)
-        except Exception:
-            pass
-        else:
-            project = p
-            content = content.replace('#' + p, '')
-
-    # Find labels (@labelname)
-    labelnames = set(l['name'].lower() for l in api.labels.all())
-    labels = set(l for l in re.findall('\@(\w+)', content)
-                 if l.lower() in labelnames)
-    for l in labels:
-        content = content.replace('@' + l, '')
-
-    content, date = parse_date(content)
-
-    # Find priority
-    # Note: Frontend consider 1 highest, while the API consider 4 the highest.
-    # In here, we have the frontend's perspective.
-    priority = 4
-    match = re.search("!!([1-4])", content)
-    if match:
-        priority = match.group(1)
-        content = content.replace('!!{}'.format(priority), '')
-
-    # Remove superfluous spaces
-    content = re.sub('  +', ' ', content).strip()
-    return content, project, date, labels, priority
-
-dateformats = ('(mon|tues|wednes|thurs|fri|satur|sun)day', 'tomorrow', 'today',
-               'next month', 'next year', '[0-3]?[0-9]\. [a-z]{3,6}( \d{4})?',
-               '\d+ (day|week|month|year)s?',
-               )
-timeformats = ('[0-1][0-9]:[0-5][0-9]',)
-
-
-def parse_date(content):
-    """Return first date format found, and remove from content"""
-    for d in dateformats:
-        m = re.search('({}( {})?)'.format(d, timeformats), content)
-        if m:
-            return content.replace(m.groups()[0], ''), m.groups()[0]
-    return content, None
-
-
 def gather_input(content, api, args):
     """Ask user for info about the new item."""
-    content, project, date, labels, priority = parse_content(api, content)
+    content, project, date, labels, priority = userinput.parse_content(api,
+                                                                       content)
 
     print()
     # TODO: colorize invalid project and label names (# and @), to highlight
@@ -141,8 +59,8 @@ def gather_input(content, api, args):
     all_labels = set(unicode(l['name']).lower() for l in api.labels.all())
     labels = utils.ask_multichoice('Labels', choices=all_labels,
                                    default=labels, category="labels")
-    date = utils.ask_choice('Date', choices=dateformats, default=date,
-                            category="date", regex_choices=True)
+    date = utils.ask_choice('Date', choices=userinput.dateformats,
+                            default=date, category="date", regex_choices=True)
     priority = utils.ask_choice('Priority', choices=['1', '2', '3', '4'],
                                 default=priority, category="priority")
     return content, project, date, labels, priority
@@ -196,13 +114,14 @@ if __name__ == '__main__':
                           date_string=date, labels=api.get_label_id(labels))
         print("\nNew item:\n{}\n".format(i))
         if utils.ask_confirmation("Okay to create?", args):
-            do_commit(api)
+            api.force_commit()
+
             api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                          'Message-Id',
                                                          '_Reply-To',
                                                          '*Subject',
                                                          '_Sender'))
-            do_commit(api)
+            api.force_commit()
             print("\nItem created")
             api.sync()
             new = api.items.all(lambda x: x['id'] == i['id'])[0]

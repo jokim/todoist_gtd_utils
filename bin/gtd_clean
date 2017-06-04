@@ -16,10 +16,16 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from todoist_gtd_utils import userinput
+from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 
 
 def remove_labels_in_someday(api):
+    """Archive labels from items in Someday/Maybe.
+
+    Remove label, and add it as a comment, so that it's possible to restore.
+
+    """
     somedaymaybe_project_name = 'Someday Maybe'
     print("Remove labels in {}…".format(somedaymaybe_project_name))
     ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
@@ -36,19 +42,62 @@ def remove_labels_in_someday(api):
         labels_to_remove = set(i['labels']) - ignore_l_ids
         if labels_to_remove:
             print("\nItem: {}".format(i))
-            if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(', '.join(
-                                api.get_label_humanname(labels_to_remove)))):
+            if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
+                    ', '.join(api.get_label_humanname(labels_to_remove)))):
                 # TODO: add support for editing the labels and not just y/n
                 remaining_l = set(i['labels']) - labels_to_remove
                 for l in labels_to_remove:
                     api.notes.add(i['id'],
                                   "gtd_utils:removed_label:{}".format(l))
-                ret = i.update(labels=list(remaining_l))
-        api.commit()
+                i.update(labels=list(remaining_l))
+        api.force_commit()
     print("Done removing labels in {}".format(somedaymaybe_project_name))
 
+
+def restore_labels_in_projects(api):
+    """Restore archived labels from reactivated items"""
+    target_projects = ['Personal', 'Work']
+    print("Restore labels from {}…".format(', '.join(target_projects)))
+    item_ids = set()
+    for p in target_projects:
+        proj = api.get_projects_by_name(p)
+        child_pr = set(p['id'] for p in api.get_child_projects(proj))
+        child_pr.add(proj['id'])
+        print("Processing {} projects from {}…".format(len(child_pr), p))
+        items = api.items.all(lambda x: x['project_id'] in child_pr)
+        print("Processing {} items from {}…".format(len(items), p))
+        item_ids.update(i['id'] for i in items)
+
+    notes = api.notes.all(lambda x:
+                          x['item_id'] in item_ids and
+                          x['content'].startswith('gtd_clean:removed_l'))
+    print("Found {} removed labels to restore".format(len(notes)))
+    targets = {}
+    for n in notes:
+        targets.setdefault(n['item_id'], []).append(n)
+    for i, notes in targets.iteritems():
+        item = api.items.get_by_id(i)
+        labels = []
+        for n in notes:
+            l = n['content'].split(':')[2]
+            if l in item['labels']:
+                continue
+            if not api.labels.get(l):
+                continue
+            labels.append(l)
+        print("Restore labels for {}: {}".format(
+            utils.trim_too_long(item['content']),
+            ', '.join(api.get_label_name(labels))))
+        item.update(labels=item['labels'] + labels)
+        api.force_commit()
+        # TODO: Verify if labels have been updated first!
+        for n in notes:
+            n.delete()
+        api.force_commit()
+
 if __name__ == '__main__':
-    p = userinput.get_argparser(description="Clean up in Todoist, for GTD setup")
+    p = userinput.get_argparser(
+            description="Clean up in Todoist, for GTD setup")
     args = p.parse_args()
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
     if not api.is_authenticated():
@@ -57,3 +106,4 @@ if __name__ == '__main__':
     api.sync()
 
     remove_labels_in_someday(api)
+    restore_labels_in_projects(api)

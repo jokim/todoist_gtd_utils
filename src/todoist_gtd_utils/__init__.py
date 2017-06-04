@@ -81,6 +81,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """Shortcut for getting a label's name"""
         if isinstance(id, (list, tuple, set)):
             return map(self.get_label_name, id)
+        id = int(id)
         return self.labels.all(lambda x: x['id'] == id)[0]['name']
 
     def get_label_id(self, name):

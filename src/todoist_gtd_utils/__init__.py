@@ -141,6 +141,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
     def get_child_projects(self, parent):
         """Get a list of all child projects of a given project
 
+        Would like to use p['parent_id'], but it's not set for all children,
+        unfortunately. Instead, children are all projects with a higher indent
+        and item_order.
+
         :type parent: todoist.models.Project
         :param parent: The target project to fetch children for
 
@@ -149,20 +153,13 @@ class TodoistGTD(todoist.api.TodoistAPI):
 
         """
         ret = []
-        projs = self.projects.all()
+        order = parent['item_order']
+        projs = self.projects.all(lambda x: x['item_order'] > order)
         projs.sort(key=lambda x: x['item_order'])
-        found = False
         for p in projs:
-            # Would like to use p['parent_id'], but it's not set for all
-            # children, unfortunately. Instead, children are all projects with
-            # a higher indent and item_order.
-            if p['id'] == parent['id']:
-                found = True
-            elif found:
-                if p['indent'] > parent['indent']:
-                    ret.append(p)
-                else:
-                    found = False
+            if p['indent'] <= parent['indent']:
+                break
+            ret.append(p)
         return ret
 
     def force_commit(self):

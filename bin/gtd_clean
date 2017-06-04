@@ -1,25 +1,42 @@
 #!/bin/env python
 # -*- encoding: utf-8 -*-
 
-import argparse
-from todoist_gtd_utils import utils, TodoistGTD
+"""Clean up GTD data in Todoist, where needed.
+
+For now supports:
+
+- Archive labels for items in Someday/Maybe. This is so they aren't in the way
+  when they are postponed.
+
+- TODO: Unarchive labels for items moved back to active projects.
+
+"""
+
+from __future__ import print_function
+from __future__ import unicode_literals
+
+from todoist_gtd_utils import userinput
+from todoist_gtd_utils import TodoistGTD
+
 
 def remove_labels_in_someday(api):
-    print "Remove labels in Someday/Maybe..."
+    somedaymaybe_project_name = 'Someday Maybe'
+    print("Remove labels in {}…".format(somedaymaybe_project_name))
     ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
     ignore_l_ids = set(api.get_label_id(l)['id'] for l in ignore_labels)
 
-    proj = api.get_projects_by_name("Someday Maybe")
+    proj = api.get_projects_by_name(somedaymaybe_project_name)
     child_pr = list(api.get_child_projects(proj))
+    print("Processing {} projects…".format(len(child_pr)))
     child_pr_ids = set(p['id'] for p in child_pr)
-
-    items = api.items.all(lambda x: x['id'] in child_pr_ids)
+    items = api.items.all(lambda x: x['project_id'] in child_pr_ids)
+    print("Processing {} items…".format(len(items)))
 
     for i in items:
         labels_to_remove = set(i['labels']) - ignore_l_ids
         if labels_to_remove:
-            print u"\nItem: {}".format(i)
-            if utils.ask_confirmation(u"Ok to remove labels: {}?".format(', '.join(
+            print("\nItem: {}".format(i))
+            if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(', '.join(
                                 api.get_label_humanname(labels_to_remove)))):
                 # TODO: add support for editing the labels and not just y/n
                 remaining_l = set(i['labels']) - labels_to_remove
@@ -28,11 +45,15 @@ def remove_labels_in_someday(api):
                                   "gtd_utils:removed_label:{}".format(l))
                 ret = i.update(labels=list(remaining_l))
         api.commit()
-    print "Done removing labels in Someday/Maybe"
+    print("Done removing labels in {}".format(somedaymaybe_project_name))
 
 if __name__ == '__main__':
-    p = utils.get_argparser(description="Clean up in Todoist, for GTD setup")
+    p = userinput.get_argparser(description="Clean up in Todoist, for GTD setup")
     args = p.parse_args()
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
+    if not api.is_authenticated():
+        userinput.login_dialog(api)
+    print("Syncing with Todoist…")
+    api.sync()
 
     remove_labels_in_someday(api)

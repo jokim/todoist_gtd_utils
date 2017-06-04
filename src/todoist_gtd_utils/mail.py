@@ -10,10 +10,12 @@ Todoist.
 
 from __future__ import unicode_literals
 
+import re
 import email
 import email.header
 from quopri import ishex
 from quopri import unhex
+import html2text
 
 from todoist_gtd_utils import utils
 from todoist_gtd_utils.utils import to_unicode
@@ -40,7 +42,7 @@ class SimpleMailParser(object):
             ' '.join(to_unicode(t[0], t[1] or 'latin1', 'replace') for t in
                      email.header.decode_header(raw)))
 
-    def get_decoded_payload(self, p):
+    def get_unicoded_payload(self, p):
         """Try to return a unicodified payload.
 
         Should accept badly encoded data without failing.
@@ -57,12 +59,35 @@ class SimpleMailParser(object):
                                                                       header=0)
             return load
 
+    def get_decoded_payload(self, p):
+        """Get a decoded string of a given payload."""
+        txt = self.get_unicoded_payload(p)
+        if p.get_content_type() == 'text/html':
+            txt = self.filter_html(txt)
+        # Add more content types to handle here
+
+        # Remove extra spaces
+        txt = re.sub('  +', ' ', txt).strip()
+        # Remove extra lines
+        txt = re.sub('\n\s*\n', '\n', txt).strip()
+        return txt
+
+    @staticmethod
+    def filter_html(html):
+        """Return HTML as text. Much guesswork."""
+        txt = html2text.html2text(html)
+        txt = txt.replace('&lt;', '<')
+        txt = txt.replace('&gt;', '>')
+        # TODO: Fix missing data here
+        return txt
+
     def get_body(self):
         # TODO: support encoding
         if self.mail.is_multipart():
-            # TODO: Filter html etc
-            return '\n'.join(self.get_decoded_payload(p) for p in
-                             self.mail.get_payload())
+            ret = []
+            for raw in self.mail.get_payload():
+                ret.append(self.get_decoded_payload(raw))
+            return '\n'.join(ret)
         else:
             return self.get_decoded_payload(self.mail)
 

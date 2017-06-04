@@ -33,7 +33,7 @@ import todoist_gtd_utils
 import todoist_gtd_utils.mail
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
-from todoist_gtd_utils import userinput
+from todoist_gtd_utils import userinput as ui
 
 
 def signal_handler(signal, frame):
@@ -44,8 +44,7 @@ def signal_handler(signal, frame):
 
 def gather_input(content, api, args):
     """Ask user for info about the new item."""
-    content, project, date, labels, priority = userinput.parse_content(api,
-                                                                       content)
+    content, project, date, labels, priority = ui.parse_content(api, content)
 
     print()
     # TODO: colorize invalid project and label names (# and @), to highlight
@@ -54,14 +53,14 @@ def gather_input(content, api, args):
     print()
 
     projects = set(unicode(p['name']) for p in api.projects.all())
-    project = utils.ask_choice('Project', choices=projects, default=project,
+    project = ui.ask_choice('Project', choices=projects, default=project,
                                category="project")
     all_labels = set(unicode(l['name']).lower() for l in api.labels.all())
-    labels = utils.ask_multichoice('Labels', choices=all_labels,
+    labels = ui.ask_multichoice('Labels', choices=all_labels,
                                    default=labels, category="labels")
-    date = utils.ask_choice('Date', choices=userinput.dateformats,
+    date = ui.ask_choice('Date', choices=ui.dateformats,
                             default=date, category="date", regex_choices=True)
-    priority = utils.ask_choice('Priority', choices=['1', '2', '3', '4'],
+    priority = ui.ask_choice('Priority', choices=['1', '2', '3', '4'],
                                 default=priority, category="priority")
     return content, project, date, labels, priority
 
@@ -80,7 +79,7 @@ def create_api(args):
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
-    p = utils.get_argparser(usage="%(prog)s [options] MAILFILE",
+    p = ui.get_argparser(usage="%(prog)s [options] MAILFILE",
                             description=__doc__)
     p.add_argument('mail', metavar="MAILFILE", type=argparse.FileType('r'),
                    help="Mail to store as note. Defaults to piped input, e.g. "
@@ -90,8 +89,12 @@ if __name__ == '__main__':
     mail = todoist_gtd_utils.mail.SimpleMailParser(args.mail)
 
     print()
-    print(mail.get_presentation('Date', 'From', '_Sender', 'To', 'Cc',
+    print(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
                                 'Subject', body=False))
+    print()
+    print(utils.trim_too_long(mail.get_body(), 1000))
+    # TODO: trim out quoted text, if not enough space in 1000 chars (or 20
+    # lines)
     print()
 
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
@@ -100,7 +103,7 @@ if __name__ == '__main__':
     t.join()
     # Authenticate
     if not api.is_authenticated():
-        utils.login_dialog(api)
+        ui.login_dialog(api)
         api.sync()
 
     while True:
@@ -113,7 +116,7 @@ if __name__ == '__main__':
                           project_id=api.get_projects_by_name(project)['id'],
                           date_string=date, labels=api.get_label_id(labels))
         print("\nNew item:\n{}\n".format(i))
-        if utils.ask_confirmation("Okay to create?", args):
+        if ui.ask_confirmation("Okay to create?", args):
             api.force_commit()
 
             api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',

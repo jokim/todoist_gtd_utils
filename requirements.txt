@@ -1,1 +1,2 @@
 todoist-python
+html2text

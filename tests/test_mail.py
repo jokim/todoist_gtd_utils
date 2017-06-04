@@ -217,6 +217,17 @@ def test_multipart():
     assert "Joakim Hovlandsvåg" in pres
 
 
+def test_html_mail_prettified():
+    p = todoist_gtd_utils.mail.SimpleMailParser(
+            io.StringIO(raw_mail_multipart))
+    body = p.get_body()
+    print body
+    assert 'HTML title' in body
+    # Remove CSS and other metadata
+    assert "background-color" not in body
+    assert "<html>" not in body
+
+
 def test_decode_quoted_printable():
     tests = (("hei og hopp", "hei og hopp"),
              ("hei =C3=A5 hopp", "hei å hopp"),

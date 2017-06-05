@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
     t.start()
-    content = unicode(raw_input("New task: "), 'utf-8')
+    content = unicode(raw_input("What is it? "), 'utf-8')
     t.join()
     # Authenticate
     if not api.is_authenticated():
@@ -132,3 +132,4 @@ if __name__ == '__main__':
             break
         else:
             print("\nGoing all over again...\n")
+            content = unicode(raw_input("What is it? "), 'utf-8')

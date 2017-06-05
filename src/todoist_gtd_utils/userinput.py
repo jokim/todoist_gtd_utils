@@ -136,7 +136,7 @@ def ask_confirmation(prompt, args=None):
 
 
 def _set_completer(choices):
-    """Return a readline completer for tab completion of given choices.
+    """Setup a readline completer for tab completion of given choices.
 
     Usable for quicker input of e.g. labels and projects.
 
@@ -182,12 +182,20 @@ def ask_choice(prompt, choices, default=None, category='choice',
             present_choices(choices)
             continue
         raw = raw.strip()
-        if not regex_choices:
-            if raw in choices:
-                return raw
-        else:
+        if regex_choices:
             if filter(lambda x: re.search(x, raw), choices):
                 return raw
+            print("Invalid {}, please try again (return ? for "
+                  "overview)".format(category))
+        else:
+            if raw in choices:
+                return raw
+            raw = raw.lower()
+            matches = filter(lambda x: raw in x.lower(), choices)
+            if matches:
+                ret = ask_choice_of_list("Please narrow it down:", matches)
+                if ret:
+                    return matches[ret]
         print("Invalid {}, please try again (return ? for "
               "overview)".format(category))
 
@@ -222,6 +230,50 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
                                       separator.join(invalid_selections)))
         print("(return ? for overview)")
 
+
+def ask_choice_of_list(prompt, choices, default=0):
+    """Prompts user to select one choice by choosing a number.
+
+    The user gets reprompted if invalid number. If users gives blank answer,
+    the default is returned.
+
+    :type prompt: str
+    :param prompt: What to ask the user for, before the choices are printed.
+
+    :rtype: int or None
+    :return:
+        The selected choice by its index number. Returns None if user aborted.
+
+    """
+    _set_completer(choices)
+    while True:
+        print(prompt)
+        for i, choice in enumerate(choices):
+            print("  {}: {}".format(i+1, choice))
+        raw = raw_input("Please choose 1-{} [{}]: ".format(len(choices),
+                                                           default+1))
+        if not raw:
+            return default
+        raw = raw.strip()
+        try:
+            choice = int(raw.strip())
+        except ValueError:
+            if raw == 'a':
+                return None
+            raw = raw_input("Invalid number, choose 1-{}: ".format(len(choices)))
+            raw = raw.strip()
+            try:
+                choice = int(raw)
+            except ValueError:
+                if raw == 'a':
+                    return None
+                print("Invalid number")
+                continue
+
+        if choice < 1 or choice > len(choices):
+            print("Number not in range, please try again")
+            continue
+        return choice - 1
 
 def present_choices(choices):
     """Print out given choices.

@@ -221,6 +221,6 @@ class HumanItem(todoist.models.Item):
         return self.get_short_preview()
 
     def __str__(self):
-        return self.get_short_preview()
+        return self.get_short_preview().encode('utf-8')
 
 todoist.models.Item = HumanItem

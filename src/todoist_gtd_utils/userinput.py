@@ -194,7 +194,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
             matches = filter(lambda x: raw in x.lower(), choices)
             if matches:
                 ret = ask_choice_of_list("Please narrow it down:", matches)
-                if ret != None:
+                if ret is not None:
                     return matches[ret]
         print("Invalid {}, please try again (return ? for "
               "overview)".format(category))
@@ -260,7 +260,8 @@ def ask_choice_of_list(prompt, choices, default=0):
         except ValueError:
             if raw == 'a':
                 return None
-            raw = raw_input("Invalid number, choose 1-{}: ".format(len(choices)))
+            raw = raw_input("Invalid number, choose 1-{}: ".format(
+                                                        len(choices)))
             raw = raw.strip()
             try:
                 choice = int(raw)
@@ -274,6 +275,7 @@ def ask_choice_of_list(prompt, choices, default=0):
             print("Number not in range, please try again")
             continue
         return choice - 1
+
 
 def present_choices(choices):
     """Print out given choices.

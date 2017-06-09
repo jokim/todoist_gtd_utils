@@ -104,6 +104,8 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """Shortcut for getting a project's name"""
         if isinstance(id, (list, tuple, set)):
             return map(self.get_project_name, id)
+        if isinstance(id, todoist.models.Project):
+            return id['name']
         return self.projects.all(lambda x: x['id'] == id)[0]['name'].strip()
 
     def get_projects_by_name(self, name, raise_on_duplicate=True):

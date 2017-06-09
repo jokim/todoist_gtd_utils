@@ -194,7 +194,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
             matches = filter(lambda x: raw in x.lower(), choices)
             if matches:
                 ret = ask_choice_of_list("Please narrow it down:", matches)
-                if ret:
+                if ret != None:
                     return matches[ret]
         print("Invalid {}, please try again (return ? for "
               "overview)".format(category))

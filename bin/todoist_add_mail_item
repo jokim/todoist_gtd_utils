@@ -42,9 +42,9 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
-def gather_input(content, api, args):
+def gather_input(content, api, args, project=None):
     """Ask user for info about the new item."""
-    content, project, date, labels, priority = ui.parse_content(api, content)
+    content, proj, date, labels, priority = ui.parse_content(api, content)
 
     print()
     # TODO: colorize invalid project and label names (# and @), to highlight
@@ -52,16 +52,17 @@ def gather_input(content, api, args):
     print(content)
     print()
 
-    projects = set(unicode(p['name']) for p in api.projects.all())
-    project = ui.ask_choice('Project', choices=projects, default=project,
-                               category="project")
+    if not project:
+        projects = set(unicode(p['name']) for p in api.projects.all())
+        project = ui.ask_choice('Project', choices=projects, default=proj,
+                                category="project")
     all_labels = set(unicode(l['name']).lower() for l in api.labels.all())
-    labels = ui.ask_multichoice('Labels', choices=all_labels,
-                                   default=labels, category="labels")
-    date = ui.ask_choice('Date', choices=ui.dateformats,
-                            default=date, category="date", regex_choices=True)
+    labels = ui.ask_multichoice('Labels', choices=all_labels, default=labels,
+                                category="labels")
+    date = ui.ask_choice('Date', choices=ui.dateformats, default=date,
+                         category="date", regex_choices=True)
     priority = ui.ask_choice('Priority', choices=['1', '2', '3', '4'],
-                                default=priority, category="priority")
+                             default=priority, category="priority")
     return content, project, date, labels, priority
 
 
@@ -80,7 +81,7 @@ def create_api(args):
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     p = ui.get_argparser(usage="%(prog)s [options] MAILFILE",
-                            description=__doc__)
+                         description=__doc__)
     p.add_argument('mail', metavar="MAILFILE", type=argparse.FileType('r'),
                    help="Mail to store as note. Defaults to piped input, e.g. "
                    "from mutt",
@@ -99,20 +100,44 @@ if __name__ == '__main__':
 
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
     t.start()
-    content = unicode(raw_input("What is it? "), 'utf-8')
+
+    what = ui.ask_choice('New project or single task?', default='task',
+                         choices=['project', 'task'])
+    goal = None
+    if what == 'project':
+        goal = unicode(raw_input("Project end goal: "), 'utf-8')
+    next = unicode(raw_input("Next action: "), 'utf-8')
+
     t.join()
+
     # Authenticate
     if not api.is_authenticated():
         ui.login_dialog(api)
         api.sync()
 
+    if goal:
+        parent = api.get_projects_by_name('Work')
+        sub_pr = api.get_child_projects(parent)
+        # - ask for what position
+        pos = ui.ask_choice_of_list("Where to put new project:",
+                                    api.get_project_name(sub_pr))
+        pos = sub_pr[pos]['item_order']
+        new_pr = api.projects.add(goal, indent=parent['indent'] + 1,
+                                  color=parent['color'], item_order=pos)
+        i = api.items.add('* Original request', project_id=new_pr['id'])
+        api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
+                                                     'Message-Id', '_Reply-To',
+                                                     '*Subject', '_Sender'))
+        api.force_commit()
+        print("Project created")
+
     while True:
-        content, project, date, labels, priority = gather_input(content, api,
-                                                                args)
+        next, project, date, labels, priority = gather_input(next, api, args,
+                                                             project=goal)
         api_pri = utils.frontend_priority_to_api(priority)
 
         # Add emoji for mark that item came by email:
-        i = api.items.add(content + ' :email:', priority=api_pri, indent=1,
+        i = api.items.add(next + ' :email:', priority=api_pri, indent=1,
                           project_id=api.get_projects_by_name(project)['id'],
                           date_string=date, labels=api.get_label_id(labels))
         print("\nNew item:\n{}\n".format(i))
@@ -132,4 +157,4 @@ if __name__ == '__main__':
             break
         else:
             print("\nGoing all over again...\n")
-            content = unicode(raw_input("What is it? "), 'utf-8')
+            next = unicode(raw_input("What is it? "), 'utf-8')

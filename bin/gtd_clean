@@ -39,6 +39,14 @@ def remove_labels_in_someday(api):
     items = api.items.all(lambda x: x['project_id'] in child_pr_ids)
     print("Processing {} items…".format(len(items)))
 
+    def add_labels(content, labels):
+        adds = set()
+        for l in labels:
+            l = '__' + l
+            if l not in content:
+                adds.add(l)
+        return content + ' '.join(adds)
+
     for i in items:
         labels_to_remove = set(i['labels']) - ignore_l_ids
         if not labels_to_remove:
@@ -52,8 +60,8 @@ def remove_labels_in_someday(api):
             for l in labels_to_remove:
                 api.notes.add(i['id'], "gtd_utils:removed_label:{}:{}"
                               .format(l, api.get_label_name(l)))
-            i.update(labels=list(remaining_l), content=i['content'] + ' ' +
-                     ' '.join('__'+l for l in labelnames))
+            i.update(labels=list(remaining_l), content=add_labels(i['content'],
+                                                                  labelnames))
             api.force_commit()
     api.force_commit()
     api.sync()
@@ -82,6 +90,11 @@ def restore_labels_in_projects(api):
             return True
         return False
 
+    def remove_labels(content, labels):
+        for l in labels:
+            content = content.replace('__' + l, '')
+        return content.strip()
+
     notes = api.notes.all(lambda x:
                           x['item_id'] in item_ids and
                           get_match(x['content']))
@@ -106,7 +119,10 @@ def restore_labels_in_projects(api):
         print("Restore labels for {}: {}".format(
             utils.trim_too_long(item['content']),
             ', '.join(api.get_label_name(labels))))
-        item.update(labels=item['labels'] + labels)
+
+        item.update(labels=item['labels'] + labels,
+                    content=remove_labels(item['content'],
+                                          api.get_label_name(labels)))
         api.force_commit()
         # TODO: Verify if labels have been updated first!
         for n in notes:

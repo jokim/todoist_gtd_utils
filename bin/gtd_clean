@@ -29,7 +29,8 @@ def remove_labels_in_someday(api):
     somedaymaybe_project_name = 'Someday Maybe'
     print("Remove labels in {}…".format(somedaymaybe_project_name))
     ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
-    ignore_l_ids = set(api.get_label_id(l)['id'] for l in ignore_labels)
+    ignore_l_ids = set(map(api.get_label_id, ignore_labels))
+    print("Ignore labels: {}".format(', '.join(ignore_labels)))
 
     proj = api.get_projects_by_name(somedaymaybe_project_name)
     child_pr = list(api.get_child_projects(proj))
@@ -40,17 +41,22 @@ def remove_labels_in_someday(api):
 
     for i in items:
         labels_to_remove = set(i['labels']) - ignore_l_ids
-        if labels_to_remove:
-            print("\nItem: {}".format(i))
-            if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
-                    ', '.join(api.get_label_humanname(labels_to_remove)))):
-                # TODO: add support for editing the labels and not just y/n
-                remaining_l = set(i['labels']) - labels_to_remove
-                for l in labels_to_remove:
-                    api.notes.add(i['id'],
-                                  "gtd_utils:removed_label:{}".format(l))
-                i.update(labels=list(remaining_l))
-        api.force_commit()
+        if not labels_to_remove:
+            continue
+        print("\nItem: {}".format(i))
+        labelnames = api.get_label_name(labels_to_remove)
+        if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
+                ', '.join(labelnames))):
+            # TODO: add support for editing the labels and not just y/n?
+            remaining_l = set(i['labels']) - labels_to_remove
+            for l in labels_to_remove:
+                api.notes.add(i['id'], "gtd_utils:removed_label:{}:{}"
+                              .format(l, api.get_label_name(l)))
+            i.update(labels=list(remaining_l), content=i['content'] + ' ' +
+                     ' '.join('__'+l for l in labelnames))
+            api.force_commit()
+    api.force_commit()
+    api.sync()
     print("Done removing labels in {}".format(somedaymaybe_project_name))
 
 

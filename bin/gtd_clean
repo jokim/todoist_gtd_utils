@@ -62,6 +62,7 @@ def remove_labels_in_someday(api):
 
 def restore_labels_in_projects(api):
     """Restore archived labels from reactivated items"""
+    # TODO: Add target projects to config!
     target_projects = ['Personal', 'Work']
     print("Restore labels from {}…".format(', '.join(target_projects)))
     item_ids = set()
@@ -70,14 +71,22 @@ def restore_labels_in_projects(api):
         child_pr = set(p['id'] for p in api.get_child_projects(proj))
         child_pr.add(proj['id'])
         print("Processing {} projects from {}…".format(len(child_pr), p))
+        print(api.get_project_name(child_pr))
         items = api.items.all(lambda x: x['project_id'] in child_pr)
         print("Processing {} items from {}…".format(len(items), p))
         item_ids.update(i['id'] for i in items)
 
+    def get_match(comment):
+        if (comment.startswith('gtd_utils:removed_l') or
+                comment.startswith('gtd_clean:removed_l')):
+            return True
+        return False
+
     notes = api.notes.all(lambda x:
                           x['item_id'] in item_ids and
-                          x['content'].startswith('gtd_clean:removed_l'))
+                          get_match(x['content']))
     print("Found {} removed labels to restore".format(len(notes)))
+
     targets = {}
     for n in notes:
         targets.setdefault(n['item_id'], []).append(n)
@@ -85,10 +94,13 @@ def restore_labels_in_projects(api):
         item = api.items.get_by_id(i)
         labels = []
         for n in notes:
-            l = n['content'].split(':')[2]
+            data = n['content'].split(':')
+            l = data[2]
             if l in item['labels']:
                 continue
             if not api.labels.get(l):
+                print(item)
+                print("WARN: Label {} doesn't exist. Data: {}".format(l, data))
                 continue
             labels.append(l)
         print("Restore labels for {}: {}".format(

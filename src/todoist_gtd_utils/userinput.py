@@ -11,8 +11,14 @@ import readline
 import getpass
 import requests
 
-dateformats = ('(mon|tues|wednes|thurs|fri|satur|sun)day', 'tomorrow', 'today',
-               'next month', 'next year', '[0-3]?[0-9]\. [a-z]{3,6}( \d{4})?',
+from .utils import trim_whitespace
+
+dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
+               '(after |every )?tomorrow',
+               'today',
+               '(after |every )?(\d+ )?(work)?day(s)?',
+               '(after |every )?next month', '(after |every )?next year',
+               '[0-3]?[0-9]\. [a-z]{3,6}( \d{4})?',
                '\d+ (day|week|month|year)s?',
                )
 timeformats = ('[0-1][0-9]:[0-5][0-9]',)
@@ -86,7 +92,8 @@ def parse_date(content):
     for d in dateformats:
         m = re.search('({}( {})?)'.format(d, timeformats), content)
         if m:
-            return content.replace(m.groups()[0], ''), m.groups()[0]
+            return (trim_whitespace(content.replace(m.groups()[0], '')),
+                    trim_whitespace(m.groups()[0]))
     return content, None
 
 
@@ -245,6 +252,8 @@ def ask_choice_of_list(prompt, choices, default=0):
         The selected choice by its index number. Returns None if user aborted.
 
     """
+    if len(choices) < 1:
+        raise Exception("No choices to choose from")
     _set_completer(choices)
     while True:
         print(prompt)

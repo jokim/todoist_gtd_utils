@@ -22,7 +22,12 @@ def test_parse_dates():
     for (input, exp_content, exp_date) in (
             ('', '', None),
             ('today', '', 'today'),
-            ('This is 1. may', 'This is ', '1. may')):
+            ('This after 2 days', 'This', 'after 2 days'),
+            ('every monday', '', 'every monday'),
+            ('Not after 10 days', 'Not', 'after 10 days'),
+            ('What is 10 days this?', 'What is this?', '10 days'),
+            ('every workday do something', 'do something', 'every workday'),
+            ('This is 1. may', 'This is', '1. may')):
         content, date = userinput.parse_date(input)
         assert exp_content == content
         assert exp_date == date

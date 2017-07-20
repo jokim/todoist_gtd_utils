@@ -137,7 +137,7 @@ if __name__ == '__main__':
         api_pri = utils.frontend_priority_to_api(priority)
 
         # Add emoji for mark that item came by email:
-        i = api.items.add(next + ' :email:', priority=api_pri, indent=1,
+        i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
                           project_id=api.get_projects_by_name(project)['id'],
                           date_string=date, labels=api.get_label_id(labels))
         print("\nNew item:\n{}\n".format(i))

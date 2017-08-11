@@ -20,7 +20,7 @@ from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 
 
-def remove_labels_in_someday(api):
+def remove_labels_in_someday(api, args):
     """Archive labels from items in Someday/Maybe.
 
     Remove label, and add it as a comment, so that it's possible to restore.
@@ -54,7 +54,7 @@ def remove_labels_in_someday(api):
         print("\nItem: {}".format(i))
         labelnames = api.get_label_name(labels_to_remove)
         if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
-                ', '.join(labelnames))):
+                ', '.join(labelnames)), args):
             # TODO: add support for editing the labels and not just y/n?
             remaining_l = set(i['labels']) - labels_to_remove
             for l in labels_to_remove:
@@ -139,5 +139,5 @@ if __name__ == '__main__':
     print("Syncing with Todoist…")
     api.sync()
 
-    remove_labels_in_someday(api)
+    remove_labels_in_someday(api, args)
     restore_labels_in_projects(api)

@@ -13,6 +13,8 @@ def to_unicode(input, encoding, errors):
     """Shortcut for decoding to unicode"""
     if isinstance(input, unicode):
         return input
+    if input is None:
+        return input
     return unicode(input, encoding, errors)
 
 

@@ -62,6 +62,8 @@ class SimpleMailParser(object):
     def get_decoded_payload(self, p):
         """Get a decoded string of a given payload."""
         txt = self.get_unicoded_payload(p)
+        if txt is None:
+            return ''
         if p.get_content_type() == 'text/html':
             txt = self.filter_html(txt)
         # Add more content types to handle here

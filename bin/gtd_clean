@@ -51,7 +51,7 @@ def remove_labels_in_someday(api, args):
         labels_to_remove = set(i['labels']) - ignore_l_ids
         if not labels_to_remove:
             continue
-        print("\nItem: {}".format(i))
+        print("\n{}".format(i))
         labelnames = api.get_label_name(labels_to_remove)
         if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
                 ', '.join(labelnames)), args):

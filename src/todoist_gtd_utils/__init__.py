@@ -16,6 +16,7 @@ from todoist.api import SyncError
 
 from . import config
 from . import utils
+from . import userinput
 
 
 class TodoistGTD(todoist.api.TodoistAPI):
@@ -200,22 +201,25 @@ class HumanItem(todoist.models.Item):
         return 4
 
     def get_short_preview(self):
-        ret = utils.trim_too_long(self.data.get('content'), 100)
+        """Get one line with details of the item"""
+        max = userinput.get_terminal_size()[1]
+        ret = []
         if self.data.get('date_string'):
-            ret += ' [{}]'.format(self['date_string'] or '')
+            ret.append('[{}]'.format(self['date_string'] or ''))
         pri = self.get_frontend_pri()
         if pri < 4:
-            ret += ' !!{}'.format(pri)
-        ret += " ("
+            ret.append('!!{}'.format(pri))
+        ret.append('|')
         if 'labels' in self.data:
-            labels = ' '.join(self.api.get_label_humanname(self['labels']) or
-                              ())
-            ret += labels
+            labels = self.api.get_label_humanname(self['labels'])
+            if labels:
+                ret.append(' '.join(labels))
         if 'project_id' in self.data:
-            ret += utils.trim_too_long(
-                    ' #' + self.api.get_project_name(self['project_id']), 30)
-        ret += ")"
-        return ret
+            ret.append(utils.trim_too_long(
+                    ' #' + self.api.get_project_name(self['project_id']), 30))
+        ret = ' '.join(ret)
+        return (utils.trim_too_long(self.data.get('content'), max-len(ret)-1) +
+                ' ' + ret)
 
     def __unicode__(self):
         return self.get_short_preview()

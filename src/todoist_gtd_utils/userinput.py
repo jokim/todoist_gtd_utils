@@ -5,6 +5,7 @@
 
 from __future__ import unicode_literals
 
+import os
 import argparse
 import re
 import readline
@@ -309,3 +310,10 @@ def get_argparser(*args, **kwargs):
     p.add_argument('--yes', action='store_true',
                    help="Assume yes on non-critical decisions")
     return p
+
+
+def get_terminal_size():
+    """Return the terminal size, in number of characters"""
+    # https://stackoverflow.com/questions/566746/how-to-get-linux-console-window-width-in-python
+    rows, columns = os.popen('stty size', 'r').read().split()
+    return int(rows), int(columns)

@@ -140,5 +140,6 @@ if __name__ == '__main__':
     print("Syncing with Todoist…")
     api.sync()
 
-    remove_labels_in_someday(api, args)
     restore_labels_in_projects(api)
+    remove_labels_in_someday(api, args)
+    print("sync done")

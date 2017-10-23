@@ -13,6 +13,8 @@ TODO:
 
 import todoist
 from todoist.api import SyncError
+# TODO: move to utils, or somewhere else?
+from termcolor import colored
 
 from . import config
 from . import utils
@@ -203,7 +205,7 @@ class HumanItem(todoist.models.Item):
     def get_presentation(self):
         """Get details about the item, in a presentable manner.
 
-        Uses a few lines
+        Uses a few lines, and colors!
 
         """
         max = userinput.get_terminal_size()[1]
@@ -211,18 +213,19 @@ class HumanItem(todoist.models.Item):
         ret.append(utils.trim_too_long(self.data.get('content'), max))
         sub = []
         if self.data.get('date_string'):
-            sub.append('[{}]'.format(self['date_string'] or ''))
+            sub.append(colored('[{}]'.format(self['date_string'] or ''),
+                               'magenta', attrs=['bold']))
         pri = self.get_frontend_pri()
         if pri < 4:
-            sub.append('!!{}'.format(pri))
+            sub.append(colored('!!{}'.format(pri), 'red', attrs=['bold']))
         if 'labels' in self.data:
             labels = self.api.get_label_humanname(self['labels'])
             if labels:
-                sub.append(' '.join(labels))
+                sub.append(colored(' '.join(labels), 'green'))
         if 'project_id' in self.data:
-            sub.append(utils.trim_too_long(
+            sub.append(colored(utils.trim_too_long(
                 '#' + self.api.get_project_name(self['project_id']),
-                max - len(' '.join(sub))))
+                max - len(' '.join(sub))), 'blue'))
         ret.append(' '.join(sub))
         return '\n'.join(ret)
 
@@ -231,18 +234,20 @@ class HumanItem(todoist.models.Item):
         max = userinput.get_terminal_size()[1]
         ret = []
         if self.data.get('date_string'):
-            ret.append('[{}]'.format(self['date_string'] or ''))
+            ret.append(colored('[{}]'.format(self['date_string'] or ''),
+                               'magenta', attrs=['bold']))
         pri = self.get_frontend_pri()
         if pri < 4:
-            ret.append('!!{}'.format(pri))
+            ret.append(colored('!!{}'.format(pri), 'red', attrs=['bold']))
         ret.append('|')
         if 'labels' in self.data:
             labels = self.api.get_label_humanname(self['labels'])
             if labels:
-                ret.append(' '.join(labels))
+                ret.append(colored(' '.join(labels), 'green'))
         if 'project_id' in self.data:
-            ret.append(utils.trim_too_long(
-                    '#' + self.api.get_project_name(self['project_id']), 30))
+            ret.append(colored(utils.trim_too_long(
+                '#' + self.api.get_project_name(self['project_id']), 30),
+                'blue'))
         ret = ' '.join(ret)
         return (utils.trim_too_long(self.data.get('content'), max-len(ret)-1) +
                 ' ' + ret)

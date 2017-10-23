@@ -1,2 +1,3 @@
 todoist-python
 html2text
+termcolor

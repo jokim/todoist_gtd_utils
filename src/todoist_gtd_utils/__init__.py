@@ -200,6 +200,32 @@ class HumanItem(todoist.models.Item):
             return 3
         return 4
 
+    def get_presentation(self):
+        """Get details about the item, in a presentable manner.
+
+        Uses a few lines
+
+        """
+        max = userinput.get_terminal_size()[1]
+        ret = []
+        ret.append(utils.trim_too_long(self.data.get('content'), max))
+        sub = []
+        if self.data.get('date_string'):
+            sub.append('[{}]'.format(self['date_string'] or ''))
+        pri = self.get_frontend_pri()
+        if pri < 4:
+            sub.append('!!{}'.format(pri))
+        if 'labels' in self.data:
+            labels = self.api.get_label_humanname(self['labels'])
+            if labels:
+                sub.append(' '.join(labels))
+        if 'project_id' in self.data:
+            sub.append(utils.trim_too_long(
+                '#' + self.api.get_project_name(self['project_id']),
+                max - len(' '.join(sub))))
+        ret.append(' '.join(sub))
+        return '\n'.join(ret)
+
     def get_short_preview(self):
         """Get one line with details of the item"""
         max = userinput.get_terminal_size()[1]
@@ -216,7 +242,7 @@ class HumanItem(todoist.models.Item):
                 ret.append(' '.join(labels))
         if 'project_id' in self.data:
             ret.append(utils.trim_too_long(
-                    ' #' + self.api.get_project_name(self['project_id']), 30))
+                    '#' + self.api.get_project_name(self['project_id']), 30))
         ret = ' '.join(ret)
         return (utils.trim_too_long(self.data.get('content'), max-len(ret)-1) +
                 ' ' + ret)

@@ -1,0 +1,35 @@
+#!/bin/env python
+# -*- encoding: utf-8 -*-
+
+"""Utilities for the GTD setup."""
+
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import os
+
+from todoist_gtd_utils import userinput
+from todoist_gtd_utils import TodoistGTD
+
+
+def archive_cache(path, token):
+    """Move cache files away"""
+    for end in ('.sync', '.json'):
+        name = os.path.join(path, token + end)
+        if not os.path.exists(name):
+            print("Skipping non-existing cache: {}".format(name))
+            continue
+        dest = os.path.join(path, '.' + token + end + ".archive")
+        print("Archive '{}' to '{}'".format(name, dest))
+        os.rename(name, dest)
+
+
+if __name__ == '__main__':
+    p = userinput.get_argparser(description="Utilities for the GTD setup")
+    p.add_argument("--remove-localdata", action='store_true',
+                   help="Remove cache files, to force a full sync next time")
+    args = p.parse_args()
+
+    if args.remove_localdata:
+        api = TodoistGTD(configfiles=args.configfile, token=args.token)
+        archive_cache(api.cache, api.token)

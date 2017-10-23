@@ -26,7 +26,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
             self.config.read(configfiles)
         if not token:
             token = self.config.get('todoist', 'api-token')
-        super(TodoistGTD, self).__init__(token)
+        super(TodoistGTD, self).__init__(token=token)
 
         # Check if authenticated:
         if token:
@@ -222,5 +222,6 @@ class HumanItem(todoist.models.Item):
 
     def __str__(self):
         return self.get_short_preview().encode('utf-8')
+
 
 todoist.models.Item = HumanItem

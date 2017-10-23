@@ -129,6 +129,7 @@ def restore_labels_in_projects(api):
             n.delete()
         api.force_commit()
 
+
 if __name__ == '__main__':
     p = userinput.get_argparser(
             description="Clean up in Todoist, for GTD setup")

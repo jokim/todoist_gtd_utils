@@ -8,7 +8,7 @@ For now supports:
 - Archive labels for items in Someday/Maybe. This is so they aren't in the way
   when they are postponed.
 
-- TODO: Unarchive labels for items moved back to active projects.
+- Unarchive labels for items moved back to active projects.
 
 """
 
@@ -84,9 +84,9 @@ def restore_labels_in_projects(api):
         print("Processing {} items from {}…".format(len(items), p))
         item_ids.update(i['id'] for i in items)
 
-    def get_match(comment):
-        if (comment.startswith('gtd_utils:removed_l') or
-                comment.startswith('gtd_clean:removed_l')):
+    def get_match(note):
+        if (note.startswith('gtd_utils:removed_l') or
+                note.startswith('gtd_clean:removed_l')):
             return True
         return False
 

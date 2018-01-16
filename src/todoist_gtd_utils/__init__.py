@@ -8,8 +8,12 @@ official GUI.
 
 TODO:
 - Fix better config
+- todoist's own code is not optimal for my use, e.g. at script startup and some
+  bugs. Create my own, lightweight client, using the REST API directly?
 
 """
+
+from datetime import datetime
 
 import todoist
 from todoist.api import SyncError
@@ -182,8 +186,32 @@ class TodoistGTD(todoist.api.TodoistAPI):
             self.commit(raise_on_error=True)
         return True
 
+    def fullsync(self):
+        """Force a fullsync, since `sync()` fails sometimes.
 
-class HumanItem(todoist.models.Item):
+        Completed items aren't always updated locally.
+
+        You could instead just remove local cache files.
+
+        """
+        self.reset_state()
+        self.sync()
+
+class GTDItem(todoist.models.Item):
+    """Add GTD functionality, and more, to tasks."""
+
+    def is_due(self):
+        """Return True if task is due today or overdue"""
+        # TODO: Verify that it's ONLY 'due_date_utc' that is used. Could
+        # 'date_string' be checked as well?
+        due = self.data['due_date_utc']
+        if not due:
+            return False
+        due_date = utils.parse_utc_to_datetime(self.data['due_date_utc'])
+        return due_date <= datetime.today()
+
+
+class HumanItem(GTDItem):
     """Simpler representation of a todoist item (task)."""
 
     def get_frontend_pri(self):

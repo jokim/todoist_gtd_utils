@@ -19,6 +19,41 @@ from todoist_gtd_utils import userinput
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 
+# TODO: Move variables to config:
+somedaymaybe_project_name = 'Someday Maybe'
+
+
+def _get_child_project_ids(api, project, include_self=True):
+    """Return a list of project IDs for the children of given project."""
+    ret = set(p['id'] for p in api.get_child_projects(project))
+    if include_self:
+        ret.add(project['id'])
+    return ret
+
+
+def _get_items(api, project_ids):
+    """Return a list of IDs for all items in given projects IDs."""
+    return api.items.all(lambda x: x['project_id'] in project_ids)
+
+
+def process_active_projects_in_someday(api):
+    """Go through Someday for "active" projects.
+
+    If a project or item has a due date that is for today or expired, the user
+    is asked to activate the project.
+
+    """
+    proj = api.get_projects_by_name(somedaymaybe_project_name)
+    child_pr = _get_child_project_ids(api, proj)
+    print("Processing {} projects…".format(len(child_pr)))
+    items = _get_items(api, child_pr)
+    print("Processing {} items…".format(len(items)))
+    for i in items:
+        if i.is_due():
+            print(i)
+            print("Reactivate project?")
+            if userinput.ask_confirmation(u"Reactivate project?"):
+                raise NotImplementedError()
 
 def remove_labels_in_someday(api, args):
     """Archive labels from items in Someday/Maybe.
@@ -26,17 +61,14 @@ def remove_labels_in_someday(api, args):
     Remove label, and add it as a comment, so that it's possible to restore.
 
     """
-    somedaymaybe_project_name = 'Someday Maybe'
     print("Remove labels in {}…".format(somedaymaybe_project_name))
     ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
     ignore_l_ids = set(map(api.get_label_id, ignore_labels))
     print("Ignore labels: {}".format(', '.join(ignore_labels)))
 
     proj = api.get_projects_by_name(somedaymaybe_project_name)
-    child_pr = list(api.get_child_projects(proj))
-    print("Processing {} projects…".format(len(child_pr)))
-    child_pr_ids = set(p['id'] for p in child_pr)
-    items = api.items.all(lambda x: x['project_id'] in child_pr_ids)
+    child_pr = _get_child_project_ids(api, proj)
+    items = _get_items(api, child_pr)
     print("Processing {} items…".format(len(items)))
 
     def add_labels(content, labels):
@@ -76,11 +108,10 @@ def restore_labels_in_projects(api):
     item_ids = set()
     for p in target_projects:
         proj = api.get_projects_by_name(p)
-        child_pr = set(p['id'] for p in api.get_child_projects(proj))
-        child_pr.add(proj['id'])
+        child_pr = _get_child_project_ids(api, proj)
         print("Processing {} projects from {}…".format(len(child_pr), p))
         print(api.get_project_name(child_pr))
-        items = api.items.all(lambda x: x['project_id'] in child_pr)
+        items = _get_items(api, child_pr)
         print("Processing {} items from {}…".format(len(items), p))
         item_ids.update(i['id'] for i in items)
 
@@ -140,6 +171,7 @@ if __name__ == '__main__':
     print("Syncing with Todoist…")
     api.sync()
 
+    process_active_projects_in_someday(api)
     restore_labels_in_projects(api)
     remove_labels_in_someday(api, args)
     print("sync done")

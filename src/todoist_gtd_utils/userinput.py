@@ -183,7 +183,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
     """
     _set_completer(choices)
     while True:
-        raw = raw_input("{} [{}]: ".format(prompt, default))
+        raw = raw_input(("{} [{}]: ".format(prompt, default)).encode('utf-8'))
         if not raw:
             return default
         if raw == '?':
@@ -222,8 +222,8 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
     """
     _set_completer(choices)
     while True:
-        raw = raw_input("{} [Default: {}]: ".format(prompt,
-                                                    separator.join(default)))
+        question = "{} [Default: {}]: ".format(prompt, separator.join(default))
+        raw = raw_input(question.encode('utf-8'))
         if not raw:
             return default
         if raw == '?':

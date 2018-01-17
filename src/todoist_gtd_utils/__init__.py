@@ -148,30 +148,6 @@ class TodoistGTD(todoist.api.TodoistAPI):
             return ret[0]
         return ret
 
-    def get_child_projects(self, parent):
-        """Get a list of all child projects of a given project
-
-        Would like to use p['parent_id'], but it's not set for all children,
-        unfortunately. Instead, children are all projects with a higher indent
-        and item_order.
-
-        :type parent: todoist.models.Project
-        :param parent: The target project to fetch children for
-
-        :rtype: list
-        :return: A list of Project objects
-
-        """
-        ret = []
-        order = parent['item_order']
-        projs = self.projects.all(lambda x: x['item_order'] > order)
-        projs.sort(key=lambda x: x['item_order'])
-        for p in projs:
-            if p['indent'] <= parent['indent']:
-                break
-            ret.append(p)
-        return ret
-
     def force_commit(self):
         """Make sure a commit with Todoist is commited.
 
@@ -196,6 +172,63 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """
         self.reset_state()
         self.sync()
+
+
+class HelperProject(todoist.models.Item):
+    """Helper methods for project"""
+
+    def get_child_projects(self):
+        """Get a list of all child projects of self
+
+        Children are all projects with a item_order, and a larger indent. The
+        range breaks when a project has an indent that is equal or lower than
+        `self`. The element p['parent_id'] is not set for all children,
+        unfortunately, so we ignore that one.
+
+        :rtype: list
+        :return: A list of Project objects
+
+        """
+        ret = []
+        order = self['item_order']
+        indent = self['indent']
+        projs = self.api.projects.all(lambda x: x['item_order'] > order)
+        projs.sort(key=lambda x: x['item_order'])
+        for p in projs:
+            if p['indent'] <= indent:
+                break
+            ret.append(p)
+        return ret
+
+    def _move_project(self, new_parent):
+        """Move self to new given parent project.
+
+        The order in sub project list is, for now, set to the middle.
+
+        """
+        # Find the right order
+        children = new_parent.get_child_projects()
+        # Take the median value, to put it in the middle
+        new_order = children[len(children)/2]['item_order']
+        return self.update(indent=new_parent['indent'] + 1,
+                           item_order=new_order)
+
+    def activate_project(self, parent_project=None):
+        """Move project from Someday/Maybe to active projects.
+
+        :type parent_proj: str
+        :param parent_proj:
+            What parent project to move this to. Should be a GTD specific
+            project in Todoist, either "GTD" or something more granular, like
+            "Personal" and "Work.
+
+        """
+        if not parent_project:
+            parent_project = self.config.get_commalist('gtd',
+                                                       'target-projects')[0]
+        self._move_project(parent_project)
+        # TODO: more to do?
+
 
 class GTDItem(todoist.models.Item):
     """Add GTD functionality, and more, to tasks."""
@@ -288,3 +321,4 @@ class HumanItem(GTDItem):
 
 
 todoist.models.Item = HumanItem
+todoist.models.Project = HelperProject

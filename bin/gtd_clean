@@ -25,7 +25,7 @@ somedaymaybe_project_name = 'Someday Maybe'
 
 def _get_child_project_ids(api, project, include_self=True):
     """Return a list of project IDs for the children of given project."""
-    ret = set(p['id'] for p in api.get_child_projects(project))
+    ret = set(p['id'] for p in project.get_child_projects())
     if include_self:
         ret.add(project['id'])
     return ret
@@ -36,6 +36,24 @@ def _get_items(api, project_ids):
     return api.items.all(lambda x: x['project_id'] in project_ids)
 
 
+def _cleanup_whitespace(api):
+    """Remove a few whitespaces where unnecessary."""
+    def has_whitespace(element, x):
+        return x[element].endswith('\n') or x[element].startswith('\n')
+
+    for p in api.projects.all(lambda x: has_whitespace('name', x)):
+        print("Remove whitespace from: {}".format(p))
+        p.update(name=p['name'].strip())
+    for i in api.items.all(lambda x: has_whitespace('content', x)):
+        print("Remove whitespace from: {}".format(i))
+        i.update(content=i['content'].strip())
+
+
+def cleanup_fields(api):
+    """Clean up a few technical details."""
+    _cleanup_whitespace(api)
+
+
 def process_active_projects_in_someday(api):
     """Go through Someday for "active" projects.
 
@@ -43,17 +61,27 @@ def process_active_projects_in_someday(api):
     is asked to activate the project.
 
     """
-    proj = api.get_projects_by_name(somedaymaybe_project_name)
-    child_pr = _get_child_project_ids(api, proj)
-    print("Processing {} projects…".format(len(child_pr)))
+    targetprojects = api.config.get_commalist('gtd', 'target-projects')
+    print("\n== Active projects in Someday/Maybe? ==")
+    someday_proj = api.get_projects_by_name(somedaymaybe_project_name)
+    child_pr = _get_child_project_ids(api, someday_proj)
     items = _get_items(api, child_pr)
     print("Processing {} items…".format(len(items)))
     for i in items:
         if i.is_due():
             print(i)
-            print("Reactivate project?")
-            if userinput.ask_confirmation(u"Reactivate project?"):
-                raise NotImplementedError()
+            proj = api.projects.get_by_id(i['project_id'])
+            prompt = ("Reactivate project «{}»? Move to GTD project"
+                      .format(proj['name']))
+            move = userinput.ask_choice(prompt, targetprojects,
+                                        default=targetprojects[0],
+                                        category='project')
+            if move:
+                new_project = api.get_projects_by_name(move)
+                proj.activate_project(new_project)
+            else:
+                print("Ok. Ignore it")
+
 
 def remove_labels_in_someday(api, args):
     """Archive labels from items in Someday/Maybe.
@@ -171,6 +199,8 @@ if __name__ == '__main__':
     print("Syncing with Todoist…")
     api.sync()
 
+    cleanup_fields(api)
+    api.sync()
     process_active_projects_in_someday(api)
     restore_labels_in_projects(api)
     remove_labels_in_someday(api, args)

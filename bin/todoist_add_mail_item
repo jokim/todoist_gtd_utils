@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     if goal:
         parent = api.get_projects_by_name('Work')
-        sub_pr = api.get_child_projects(parent)
+        sub_pr = parent.get_child_projects()
         # - ask for what position
         pos = ui.ask_choice_of_list("Where to put new project:",
                                     api.get_project_name(sub_pr))

@@ -68,19 +68,40 @@ def process_active_projects_in_someday(api):
     items = _get_items(api, child_pr)
     print("Processing {} items…".format(len(items)))
     for i in items:
+        # TODO: Support cancelling/skipping, e.g. by CTRL+D or some special
+        # variable
         if i.is_due():
-            print(i)
             proj = api.projects.get_by_id(i['project_id'])
-            prompt = ("Reactivate project «{}»? Move to GTD project"
-                      .format(proj['name']))
-            move = userinput.ask_choice(prompt, targetprojects,
-                                        default=targetprojects[0],
-                                        category='project')
-            if move:
-                new_project = api.get_projects_by_name(move)
+            print("Inactive project «{}» has a task with due date:"
+                  .format(proj['name']))
+            print(i)
+            choice = userinput.ask_choice("What to do?",
+                                          ('activate', 'ignore', 'delay'),
+                                          default='activate')
+            if choice == 'activate':
+                if len(targetprojects) > 1:
+                    move = userinput.ask_choice("Activate in what GTD project?",
+                                                targetprojects,
+                                                default=targetprojects[0],
+                                                category='project')
+                    targetprojects = [move]
+                new_project = api.get_projects_by_name(targetprojects[0])
                 proj.activate_project(new_project)
+                api.commit()
+                print("Project moved to GTD-project: {}"
+                      .format(new_project['name'])
+            elif choice == 'delay':
+                date = userinput.ask_choice("For how long?",
+                                            userinput.dateformats,
+                                            default='in 7 days',
+                                            category='date',
+                                            regex_choices=True)
+                i.update(date_string=date)
+                api.commit()
+                print("Task delayed")
             else:
-                print("Ok. Ignore it")
+                print("Ok. Ignore it, for now…")
+            print()
 
 
 def remove_labels_in_someday(api, args):

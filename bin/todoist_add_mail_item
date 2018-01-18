@@ -105,8 +105,8 @@ if __name__ == '__main__':
                          choices=['project', 'task'])
     goal = None
     if what == 'project':
-        goal = unicode(raw_input("Project end goal: "), 'utf-8')
-    next = unicode(raw_input("Next action: "), 'utf-8')
+        goal = ui.get_input("Project end goal: ")
+    next = ui.get_input("Next action: ")
 
     t.join()
 
@@ -157,4 +157,4 @@ if __name__ == '__main__':
             break
         else:
             print("\nGoing all over again...\n")
-            next = unicode(raw_input("What is it? "), 'utf-8')
+            next = ui.get_input("What is it? ")

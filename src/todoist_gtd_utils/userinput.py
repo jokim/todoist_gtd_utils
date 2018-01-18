@@ -25,6 +25,14 @@ dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
 timeformats = ('[0-1][0-9]:[0-5][0-9]',)
 
 
+def get_input(prompt):
+    """Unicodify raw_input"""
+    # Force unicodified input
+    assert isinstance(prompt, unicode)
+    # TODO: How to check terminals' charset? LC_ALL?
+    return unicode(raw_input(prompt.encode('utf-8')), 'utf-8')
+
+
 def parse_content(api, content):
     """Get labels, projects and date out of a content string.
 
@@ -114,11 +122,11 @@ def login_dialog(api):
     """Authenticate user by asking for password."""
     while not api.token:
         print("Not authenticated with Todoist")
-        mail = raw_input('E-mail address: ')
+        mail = get_input('E-mail address: ')
         pwd = getpass.getpass()
         try:
             api.user.login(mail, pwd)
-        except requests.exceptions.HTTPError, e:
+        except requests.exceptions.HTTPError as e:
             if e.response.status_code not in (400, 401):
                 raise
         else:
@@ -139,7 +147,7 @@ def ask_confirmation(prompt, args=None):
     """
     if args and getattr(args, 'yes'):
         return True
-    ret = raw_input(unicode(prompt + u" (y/N): ").encode('utf8'))
+    ret = get_input(prompt + " (y/N): ")
     return ret == 'y'
 
 
@@ -183,7 +191,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
     """
     _set_completer(choices)
     while True:
-        raw = raw_input(("{} [{}]: ".format(prompt, default)).encode('utf-8'))
+        raw = get_input(("{} [{}]: ".format(prompt, default)))
         if not raw:
             return default
         if raw == '?':
@@ -223,7 +231,7 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
     _set_completer(choices)
     while True:
         question = "{} [Default: {}]: ".format(prompt, separator.join(default))
-        raw = raw_input(question.encode('utf-8'))
+        raw = get_input(question)
         if not raw:
             return default
         if raw == '?':
@@ -260,7 +268,7 @@ def ask_choice_of_list(prompt, choices, default=0):
         print(prompt)
         for i, choice in enumerate(choices):
             print("  {}: {}".format(i+1, choice))
-        raw = raw_input("Please choose 1-{} [{}]: ".format(len(choices),
+        raw = get_input("Please choose 1-{} [{}]: ".format(len(choices),
                                                            default+1))
         if not raw:
             return default
@@ -270,7 +278,7 @@ def ask_choice_of_list(prompt, choices, default=0):
         except ValueError:
             if raw == 'a':
                 return None
-            raw = raw_input("Invalid number, choose 1-{}: ".format(
+            raw = get_input("Invalid number, choose 1-{}: ".format(
                                                         len(choices)))
             raw = raw.strip()
             try:
@@ -296,9 +304,9 @@ def present_choices(choices):
     max_choice_length = max(choices, key=len)
     has_spaces = any(' ' in c for c in choices)
     if max_choice_length > 50 or has_spaces:
-        print(u'Choices:\n{}'.format('\n'.join(sorted(choices))))
+        print('Choices:\n{}'.format('\n'.join(sorted(choices))))
     else:
-        print(u'Choices: {}'.format(', '.join(sorted(choices))))
+        print('Choices: {}'.format(', '.join(sorted(choices))))
 
 
 def get_argparser(*args, **kwargs):

@@ -25,12 +25,16 @@ dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
 timeformats = ('[0-1][0-9]:[0-5][0-9]',)
 
 
+# For mocking/testing behaviour
+raw_input2 = raw_input
+
+
 def get_input(prompt):
     """Unicodify raw_input"""
     # Force unicodified input
     assert isinstance(prompt, unicode)
     # TODO: How to check terminals' charset? LC_ALL?
-    return unicode(raw_input(prompt.encode('utf-8')), 'utf-8')
+    return unicode(raw_input2(prompt.encode('utf-8')), 'utf-8')
 
 
 def parse_content(api, content):

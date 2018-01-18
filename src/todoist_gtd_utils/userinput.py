@@ -20,7 +20,7 @@ dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
                '(after |every )?(\d+ )?(work)?day(s)?',
                '(after |every )?next month', '(after |every )?next year',
                '[0-3]?[0-9]\. [a-z]{3,6}( \d{4})?',
-               '\d+ (day|week|month|year)s?',
+               'in \d+ (day|week|month|year)s?',
                )
 timeformats = ('[0-1][0-9]:[0-5][0-9]',)
 

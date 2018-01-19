@@ -187,10 +187,14 @@ def ask_choice(prompt, choices, default=None, category='choice',
     :type prompt: str
     :param prompt: What to ask the user for. Result: `Prompt [default]: `
 
+    :type choices: list or tuple
+    :param choices:
+        The options the user are limited to select.
+
     :type regex_choices: bool
     :param regex_choices:
-        True the choices are regexes to be matched. False means the choice must
-        match exactly one of the strings in `choices`.
+        If set to True the choices are regexes to be matched. False means the
+        choice must match exactly one of the strings in `choices`.
 
     """
     _set_completer(choices)
@@ -205,7 +209,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
         if regex_choices:
             if filter(lambda x: re.search(x, raw), choices):
                 return raw
-            print("Invalid {}, please try again (return ? for "
+            print("Invalid {}, please try again (write ? for "
                   "overview)".format(category))
         else:
             if raw in choices:
@@ -213,7 +217,12 @@ def ask_choice(prompt, choices, default=None, category='choice',
             raw = raw.lower()
             matches = filter(lambda x: raw in x.lower(), choices)
             if matches:
-                ret = ask_choice_of_list("Please narrow it down:", matches)
+                try:
+                    ret = ask_choice_of_list("Narrow down (CTRL+D resets):",
+                                             matches)
+                except EOFError:
+                    # user wants to reset
+                    continue
                 if ret is not None:
                     return matches[ret]
         print("Invalid {}, please try again (return ? for "

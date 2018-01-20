@@ -243,6 +243,10 @@ class GTDItem(todoist.models.Item):
         due_date = utils.parse_utc_to_datetime(self.data['due_date_utc'])
         return due_date <= datetime.today()
 
+    def get_project(self):
+        """Return the item's project instance."""
+        return self.api.projects.get_by_id(self['project_id'])
+
 
 class HumanItem(GTDItem):
     """Simpler representation of a todoist item (task)."""

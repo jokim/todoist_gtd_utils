@@ -160,7 +160,12 @@ def _set_completer(choices):
 
     Usable for quicker input of e.g. labels and projects.
 
+    :type choices: list, tuple or dict
+    :param choices: If a dict, only its keys are used.
+
     """
+    if isinstance(choices, dict):
+        choices = choices.keys()
     choices = sorted(choices)
 
     # Stolen from
@@ -187,9 +192,11 @@ def ask_choice(prompt, choices, default=None, category='choice',
     :type prompt: str
     :param prompt: What to ask the user for. Result: `Prompt [default]: `
 
-    :type choices: list or tuple
+    :type choices: list, tuple or dict
     :param choices:
-        The options the user are limited to select.
+        The options the user are limited to select. If a dict, the keys are what
+        the user selects from, and the value is returned - useful e.g. for
+        selecting items by name and returning its internal ID.
 
     :type regex_choices: bool
     :param regex_choices:
@@ -197,23 +204,33 @@ def ask_choice(prompt, choices, default=None, category='choice',
         choice must match exactly one of the strings in `choices`.
 
     """
+    values = None
+    if isinstance(choices, dict):
+        values = choices
+        choices = choices.keys()
+
+    def get_value(input):
+        if values:
+            return values[input]
+        return input
+
     _set_completer(choices)
     while True:
         raw = get_input(("{} [{}]: ".format(prompt, default)))
         if not raw:
-            return default
+            return get_value(default)
         if raw == '?':
             present_choices(choices)
             continue
         raw = raw.strip()
         if regex_choices:
             if filter(lambda x: re.search(x, raw), choices):
-                return raw
+                return get_value(raw)
             print("Invalid {}, please try again (write ? for "
                   "overview)".format(category))
         else:
             if raw in choices:
-                return raw
+                return get_value(raw)
             raw = raw.lower()
             matches = filter(lambda x: raw in x.lower(), choices)
             if matches:
@@ -222,9 +239,10 @@ def ask_choice(prompt, choices, default=None, category='choice',
                                              matches)
                 except EOFError:
                     # user wants to reset
+                    print("Ok, resets")
                     continue
                 if ret is not None:
-                    return matches[ret]
+                    return get_value(matches[ret])
         print("Invalid {}, please try again (return ? for "
               "overview)".format(category))
 
@@ -242,11 +260,17 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
 
     """
     _set_completer(choices)
+
+    def get_value(input):
+        if isinstance(choices, dict):
+            return [choices[i] for i in input]
+        return input
+
     while True:
         question = "{} [Default: {}]: ".format(prompt, separator.join(default))
         raw = get_input(question)
         if not raw:
-            return default
+            return get_value(default)
         if raw == '?':
             present_choices(choices)
             continue
@@ -254,7 +278,7 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
         selections = raw.split(separator)
         invalid_selections = filter(lambda x: x not in choices, selections)
         if not invalid_selections:
-            return selections
+            return get_value(selections)
         print("Invalid {}: {}".format(category,
                                       separator.join(invalid_selections)))
         print("(return ? for overview)")
@@ -308,12 +332,62 @@ def ask_choice_of_list(prompt, choices, default=0):
         return choice - 1
 
 
+def ask_menu(options, prompt="Choose: ", quit_char='q'):
+    """Simple menu loop executing given callbacks according to user input.
+
+    :type options: dict
+    :param options:
+        What the user can choose from. The keys are the char to input for
+        selection, and the values are a two element list with an explanation and
+        a callback. Example::
+
+            {'q': ('Quit', sys.exit), 'e': ('Edit', ask_edit), }
+
+        Note: The char '?' is reserved.
+
+        TODO: Should the callback's return have something to say?
+
+    :type prompt: str
+    :param prompt: What to ask for in the menu
+
+    """
+    _set_completer(options)
+    while True:
+        try:
+            answer = get_input(prompt)
+        except EOFError:
+            print("Okbye")
+            return
+        answer = answer.strip()
+        if answer == '?':
+            print("Options: ")
+            for k in sorted(options):
+                print("{}: {}".format(k, options[k][0]))
+            print("q: Quit menu")
+            print("?: Show this info")
+            print('')
+        elif answer == quit_char:
+            print("Okbye")
+            return
+        elif answer in options:
+            # Run callback
+            options[answer][1]()
+            print('')
+        else:
+            print("Invalid option: {}".format(answer))
+            print("(Input ? for list of options)")
+
+
 def present_choices(choices):
     """Print out given choices.
 
     Length of choices defines how they are presented (space or newline).
 
+    If choices are a dict, only its keys are used.
+
     """
+    if isinstance(choices, dict):
+        choices = choices.keys()
     max_choice_length = max(choices, key=len)
     has_spaces = any(' ' in c for c in choices)
     if max_choice_length > 50 or has_spaces:

@@ -370,9 +370,12 @@ def ask_menu(options, prompt="Choose: ", quit_char='q'):
             print("Okbye")
             return
         elif answer in options:
-            # Run callback
-            options[answer][1]()
-            print('')
+            try:
+                # Run callback
+                options[answer][1]()
+                print('')
+            except EOFError:
+                print("Command aborted")
         else:
             print("Invalid option: {}".format(answer))
             print("(Input ? for list of options)")

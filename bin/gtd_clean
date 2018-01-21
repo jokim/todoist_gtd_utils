@@ -71,7 +71,7 @@ def ask_about_inactive_project(api, item, project):
         new_parent = api.get_projects_by_name(targetprojects[0])
         project.activate_project(new_parent)
         api.commit()
-        print("Project moved to GTD-project: {}".format(new_parent['name'])
+        print("Project moved to GTD-project: {}".format(new_parent['name']))
     elif choice == 'delay':
         date = userinput.ask_choice("For how long?", userinput.dateformats,
                                     default='in 7 days', category='date',

@@ -131,8 +131,7 @@ if __name__ == '__main__':
                          choices=['project', 'task'])
     goal = None
     if what == 'project':
-        goal = ui.get_input("Project end goal: ")
-    next = ui.get_input("Next action: ")
+        goal = ui.get_input("Project end goal (project name)? ")
 
     t.join()
 
@@ -145,7 +144,7 @@ if __name__ == '__main__':
         parent = api.get_projects_by_name('Work')
         sub_pr = parent.get_child_projects()
         # - ask for what position
-        pos = ui.ask_choice_of_list("Where to put new project:",
+        pos = ui.ask_choice_of_list("Choose position of new project:",
                                     api.get_project_name(sub_pr))
         pos = sub_pr[pos]['item_order']
         new_pr = api.projects.add(goal, indent=parent['indent'] + 1,
@@ -155,13 +154,15 @@ if __name__ == '__main__':
                                                      'Message-Id', '_Reply-To',
                                                      '*Subject', '_Sender'))
         api.force_commit()
+        goal = new_pr['id']
         print("Project created")
 
+    next = ui.get_input("What's the Next action? ")
     next, project, date, labels, priority = gather_input(next, api, args,
                                                          project=goal)
+    print("Project: {}".format(project))
     api_pri = utils.frontend_priority_to_api(priority)
 
-    # Add emoji for mark that item came by email:
     i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
                       project_id=project, date_string=date, labels=labels)
     print("\nCreated new item:\n{}\n".format(i))
@@ -214,7 +215,7 @@ if __name__ == '__main__':
         for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==
                                                i['id'])):
             cprint("Note {}, from {}:".format(n, note['posted']),
-                   on_color='on_white')
+                   on_color='on_grey', color='blue')
             cprint(note['content'], attrs=['dark'])
             print('')
 

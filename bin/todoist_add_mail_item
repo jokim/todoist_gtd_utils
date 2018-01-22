@@ -135,6 +135,7 @@ if __name__ == '__main__':
     goal = None
     if what == 'project':
         goal = ui.get_input("Project end goal (project name)? ")
+    next = ui.get_input("What's the Next action? ")
 
     t.join()
 
@@ -160,7 +161,6 @@ if __name__ == '__main__':
         goal = new_pr['id']
         print("Project created")
 
-    next = ui.get_input("What's the Next action? ")
     next, project, date, labels, priority = gather_input(next, api, args,
                                                          project=goal)
     print("Project: {}".format(project))
@@ -240,4 +240,4 @@ if __name__ == '__main__':
                  'v': ('View task', view_item),
                  'r': ('Set priority', set_priority),
                  'a': ('Edit attachments', edit_attachments),
-                 }, prompt="Edit more? (dltpraQ)")
+                 }, prompt="Edit more? (? for options) ")

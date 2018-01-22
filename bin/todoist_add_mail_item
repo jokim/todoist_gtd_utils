@@ -25,11 +25,24 @@ TODOs:
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import time
+starttime = time.time()
+_lasttime = starttime
+
+def timelog(msg):
+    global _lasttime
+    now = time.time()
+    print("Since start: {}, since last: {}, msg: {}"
+          .format(now-starttime, now-_lasttime, msg))
+    _lasttime = now
+
 import sys
 import signal
 from threading import Thread
 import argparse
 from termcolor import cprint
+
+timelog('sys-imports done')
 
 import todoist_gtd_utils
 import todoist_gtd_utils.mail
@@ -37,6 +50,7 @@ from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 from todoist_gtd_utils import userinput as ui
 
+timelog('todoist-imports done')
 
 def signal_handler(signal, frame):
     """Prettier abort"""
@@ -113,7 +127,9 @@ if __name__ == '__main__':
                    "from mutt",
                    )
     args = p.parse_args()
+    timelog('arguments parsed')
     mail = todoist_gtd_utils.mail.SimpleMailParser(args.mail)
+    timelog('mail parsed')
 
     print()
     cprint(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
@@ -124,8 +140,10 @@ if __name__ == '__main__':
     # lines)
     print()
 
+    timelog('starting new thread for api')
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
     t.start()
+    timelog('thread started, now ask for input')
 
     what = ui.ask_choice('New project or single task?', default='task',
                          choices=['project', 'task'])

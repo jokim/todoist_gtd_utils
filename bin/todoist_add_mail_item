@@ -127,8 +127,11 @@ if __name__ == '__main__':
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
     t.start()
 
-    what = ui.ask_choice('New project or single task?', default='task',
-                         choices=['project', 'task'])
+    try:
+        what = ui.ask_choice('New project or single task?', default='task',
+                             choices=['project', 'task'])
+    except EOFError:
+        sys.exit(0)
     goal = None
     if what == 'project':
         goal = ui.get_input("Project end goal (project name)? ")

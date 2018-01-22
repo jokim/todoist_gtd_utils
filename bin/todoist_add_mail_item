@@ -210,6 +210,8 @@ if __name__ == '__main__':
         print("Description updated")
 
     def view_item():
+        # TODO: User item.get_presentation() instead! Move missing parts there,
+        # if needed
         cprint(i, attrs=['bold'])
         print('')
         for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==

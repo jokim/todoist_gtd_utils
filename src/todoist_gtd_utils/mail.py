@@ -16,10 +16,10 @@ import email.header
 from quopri import ishex
 from quopri import unhex
 import html2text
+from termcolor import colored
 
 from todoist_gtd_utils import utils
 from todoist_gtd_utils.utils import to_unicode
-import todoist_gtd_utils.mail
 
 
 class SimpleMailParser(object):
@@ -55,8 +55,7 @@ class SimpleMailParser(object):
             load = to_unicode(p.get_payload(decode=False), charset, 'replace')
             cte = self.mail.get('content-transfer-encoding', '').lower()
             if cte == 'quoted-printable':
-                return todoist_gtd_utils.mail.decode_quoted_printable(load,
-                                                                      header=0)
+                return decode_quoted_printable(load, header=0)
             return load
 
     def get_decoded_payload(self, p):
@@ -71,7 +70,7 @@ class SimpleMailParser(object):
         # Remove extra spaces
         txt = re.sub('  +', ' ', txt).strip()
         # Remove extra lines
-        txt = re.sub('\n\s*\n', '\n', txt).strip()
+        txt = re.sub('\n\n\s*\n', '\n', txt).strip()
         return txt
 
     @staticmethod
@@ -85,16 +84,39 @@ class SimpleMailParser(object):
 
     def get_body(self):
         # TODO: support encoding
+        # TODO: support cutting out commented text, so only the last message
+        # remains - makes it easier to present
         if self.mail.is_multipart():
             ret = []
             for raw in self.mail.get_payload():
-                ret.append(self.get_decoded_payload(raw))
+                load = self.get_decoded_payload(raw)
+                ret.append(self.colorize_text_body(load))
             return '\n'.join(ret)
         else:
-            return self.get_decoded_payload(self.mail)
+            load = self.get_decoded_payload(self.mail)
+            return self.colorize_text_body(load)
+
+    def colorize_text_body(self, body):
+        """Add some formatting to mail body."""
+        ret = []
+        in_signature = False
+        for line in body.split('\n'):
+            if line.lstrip().startswith('>'):
+                ret.append(colored(line, attrs=['dark']))
+                continue
+            if line == '-- ':
+                in_signature = True
+            if in_signature:
+                ret.append(colored(line, attrs=['dark']))
+                continue
+            ret.append(line)
+
+        return '\n'.join(ret)
 
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.
+
+        Some colors are added, for readability.
 
         Each *args argument could be prefixed with:
 

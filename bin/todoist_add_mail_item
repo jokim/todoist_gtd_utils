@@ -119,7 +119,7 @@ if __name__ == '__main__':
     cprint(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
                                  'Subject', body=False), attrs=['bold'])
     print()
-    cprint(utils.trim_too_long(mail.get_body(), 2000), attrs=['dark'])
+    cprint(utils.trim_too_long(mail.get_body(), 5000), attrs=['dark'])
     # TODO: trim out quoted text, if not enough space in 1000 chars (or 20
     # lines)
     print()

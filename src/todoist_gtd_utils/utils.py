@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import re
+import datetime
 
 
 def to_unicode(input, encoding, errors):
@@ -51,3 +52,16 @@ def frontend_priority_to_api(pri):
     if pri == 3:
         return 2
     return 1
+
+
+def parse_utc_to_datetime(datestring):
+    """Todoist includes due dates in a verbose format that needs to be parsed.
+
+    Examples:
+
+        u'Wed 03 Mar 2021 22:59:59 +0000'
+
+    """
+    d = datetime.datetime.strptime(datestring, '%a %d %b %Y %H:%M:%S +0000')
+    # TODO: Is this always correct, or does datetime convert to local time?
+    return d

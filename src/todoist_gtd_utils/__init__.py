@@ -8,8 +8,12 @@ official GUI.
 
 TODO:
 - Fix better config
+- todoist's own code is not optimal for my use, e.g. at script startup and some
+  bugs. Create my own, lightweight client, using the REST API directly?
 
 """
+
+from datetime import datetime
 
 import todoist
 from todoist.api import SyncError
@@ -87,15 +91,19 @@ class TodoistGTD(todoist.api.TodoistAPI):
         id = int(id)
         return self.labels.all(lambda x: x['id'] == id)[0]['name']
 
-    def get_label_id(self, name):
+    def get_label_id(self, name, raise_on_missing=True):
         """Shortcut for getting a label's id"""
         if isinstance(name, (list, tuple, set)):
-            return map(self.get_label_id, name)
+            return filter(None,
+                          (self.get_label_id(n,
+                                             raise_on_missing=raise_on_missing)
+                           for n in name))
         name = name.lower()
         for l in self.labels.all(lambda x: x['name'].lower() == name):
             # Label names must be unique, so will get max one result
             return l['id']
-        raise Exception('No label with name: {}'.format(name))
+        if raise_on_missing:
+            raise Exception('No label with name: {}'.format(name))
 
     def get_label_humanname(self, id):
         """Retrieve a labels name with @ in front"""
@@ -144,30 +152,6 @@ class TodoistGTD(todoist.api.TodoistAPI):
             return ret[0]
         return ret
 
-    def get_child_projects(self, parent):
-        """Get a list of all child projects of a given project
-
-        Would like to use p['parent_id'], but it's not set for all children,
-        unfortunately. Instead, children are all projects with a higher indent
-        and item_order.
-
-        :type parent: todoist.models.Project
-        :param parent: The target project to fetch children for
-
-        :rtype: list
-        :return: A list of Project objects
-
-        """
-        ret = []
-        order = parent['item_order']
-        projs = self.projects.all(lambda x: x['item_order'] > order)
-        projs.sort(key=lambda x: x['item_order'])
-        for p in projs:
-            if p['indent'] <= parent['indent']:
-                break
-            ret.append(p)
-        return ret
-
     def force_commit(self):
         """Make sure a commit with Todoist is commited.
 
@@ -182,8 +166,188 @@ class TodoistGTD(todoist.api.TodoistAPI):
             self.commit(raise_on_error=True)
         return True
 
+    def fullsync(self):
+        """Force a fullsync, since `sync()` fails sometimes.
 
-class HumanItem(todoist.models.Item):
+        Completed items aren't always updated locally.
+
+        You could instead just remove local cache files.
+
+        """
+        self.reset_state()
+        self.sync()
+
+
+class HelperProject(todoist.models.Project):
+    """Helper methods for project"""
+
+    def get_child_projects(self):
+        """Get a list of all child projects of self
+
+        Children are all projects with a item_order, and a larger indent. The
+        range breaks when a project has an indent that is equal or lower than
+        `self`. The element p['parent_id'] is not set for all children,
+        unfortunately, so we ignore that one.
+
+        :rtype: list
+        :return: A list of Project objects
+
+        """
+        ret = []
+        order = self['item_order']
+        indent = self['indent']
+        projs = self.api.projects.all(lambda x: x['item_order'] > order)
+        projs.sort(key=lambda x: x['item_order'])
+        for p in projs:
+            if p['indent'] <= indent:
+                break
+            ret.append(p)
+        return ret
+
+    def _move_project(self, new_parent):
+        """Move self to new given parent project.
+
+        The order in sub project list is, for now, set to the middle.
+
+        """
+        # Find the right order
+        children = new_parent.get_child_projects()
+        # Take the median value, to put it in the middle
+        new_order = children[len(children)/2]['item_order']
+        return self.update(indent=new_parent['indent'] + 1,
+                           item_order=new_order)
+
+    def activate_project(self, parent_project=None):
+        """Move project from Someday/Maybe to active projects.
+
+        :type parent_proj: str
+        :param parent_proj:
+            What parent project to move this to. Should be a GTD specific
+            project in Todoist, either "GTD" or something more granular, like
+            "Personal" and "Work.
+
+        """
+        if not parent_project:
+            parent_project = self.config.get_commalist('gtd',
+                                                       'target-projects')[0]
+        self._move_project(parent_project)
+        # TODO: more to do?
+
+    def postpone_project(self, someday_project=None):
+        """Move project to Someday/Maybe."""
+        if not someday_project:
+            # TODO: Get from config?
+            someday_project = self.api.get_projects_by_name('Someday Maybe')
+        self._move_project(someday_project)
+        # TODO: more to do?
+
+    def get_child_items(self, include_child_projects=False):
+        """Return all items in the project."""
+        project_ids = [self['id']]
+        if include_child_projects:
+            project_ids.extend(p['id'] for p in self.get_child_projects())
+        return self.api.items.all(lambda x: x['project_id'] in project_ids)
+
+    def get_notes(self):
+        return self.api.project_notes.all(
+                                    lambda x: x['project_id'] == self['id'])
+
+    def print_presentation(self):
+        """Get details about the project, in a presentable manner.
+
+        Uses a few lines, and colors!
+
+        """
+        print(self.get_short_preview())
+        children = self.get_child_projects()
+        if children:
+            print("\nChild project:")
+            for child in children:
+                print(child)
+
+        print('\nItems:')
+        items = self.get_child_items()
+        if not items:
+            print("(found no items)")
+        for item in items:
+            print(item)
+
+        notes = self.get_notes()
+        if notes:
+            print("\nProject notes:")
+            for note in notes:
+                print(note)
+
+    def get_short_preview(self):
+        """Get one line with details of the project.
+
+        It tries to fit in a single terminal line, so the project name gets
+        shortened in small terminal windows.
+
+        """
+        max = userinput.get_terminal_size()[1]
+        pre = []
+        pre.append(' ' * (self['indent'] - 1))
+        if self['is_deleted']:
+            pre.append("[DELETED]")
+        if self['is_archived']:
+            pre.append("[ARCHIVED]")
+
+        post = []
+        # TODO: Include summary of the project's items? E.g.
+        # - the number of active items
+        # - next due date in project
+
+        if self['has_more_notes']:
+            # TODO: get the number of notes
+            post.append("(X notes)")
+
+        restlen = len(' '.join(pre)) + len(' '.join(post))
+        pre.append(colored(utils.trim_too_long(self['name'], max-restlen),
+                           color='blue'))
+        pre.extend(post)
+        return ' '.join(pre)
+
+    def __unicode__(self):
+        return self.get_short_preview()
+
+    def __str__(self):
+        return self.__unicode__().encode('utf-8')
+
+
+class GTDItem(todoist.models.Item):
+    """Add GTD functionality, and more, to tasks."""
+
+    def is_due(self):
+        """Return True if task is due today or overdue"""
+        # TODO: Verify that it's ONLY 'due_date_utc' that is used. Could
+        # 'date_string' be checked as well?
+        due = self.data['due_date_utc']
+        if not due:
+            return False
+        due_date = utils.parse_utc_to_datetime(self.data['due_date_utc'])
+        return due_date <= datetime.today()
+
+    def is_title(self):
+        """Tell if task is a title, i.e. not a task that can be completed.
+
+        Titles are recognised by starting with an asterisk, or ending with a
+        colon. There are probably additional title formats, as well.
+
+        """
+        return (self['content'].startswith('* ') or
+                self['content'].endswith(':'))
+
+    def is_actionable(self):
+        """Return True if this is a normal, completable task."""
+        return not self.is_title()
+
+    def get_project(self):
+        """Return the item's project instance."""
+        return self.api.projects.get_by_id(self['project_id'])
+
+
+class HumanItem(GTDItem):
     """Simpler representation of a todoist item (task)."""
 
     def get_frontend_pri(self):
@@ -259,4 +423,27 @@ class HumanItem(todoist.models.Item):
         return self.get_short_preview().encode('utf-8')
 
 
+class HelperProjectNote(todoist.models.ProjectNote):
+
+    def get_posted_time(self):
+        """Get a proper datetime object for the time posted"""
+        return utils.parse_utc_to_datetime(self['posted'])
+
+    def __unicode__(self):
+        max = userinput.get_terminal_size()[1]
+        post = []
+        if self['file_attachment']:
+            post.append(colored(self['file_attachment'], attrs=['underline']))
+        post.append(self.get_posted_time().strftime('%Y-%M-%d %H:%m'))
+        poststr = ' | '.join(post)
+        content = utils.trim_too_long(self['content'],
+                                      max - 3 - len(poststr)).replace('\n', ' ')
+        return (colored(content, attrs=['dark']) + ' | ' + poststr)
+
+    def __str__(self):
+        return self.__unicode__().encode('utf-8')
+
+
 todoist.models.Item = HumanItem
+todoist.models.Project = HelperProject
+todoist.models.ProjectNote = HelperProjectNote

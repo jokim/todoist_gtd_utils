@@ -56,6 +56,7 @@ setup(
     scripts=[
         'bin/gtd_clean',
         'bin/gtd_utils',
+        'bin/gtd_shell',
         'bin/todoist_add_mail_item',
         ],
     include_package_data=True,

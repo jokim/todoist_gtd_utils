@@ -29,6 +29,8 @@ import sys
 import signal
 from threading import Thread
 import argparse
+from termcolor import cprint
+
 import todoist_gtd_utils
 import todoist_gtd_utils.mail
 from todoist_gtd_utils import utils
@@ -42,10 +44,39 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
+def ask_project(api, default):
+    projects = dict((unicode(p['name']), p['id']) for p in api.projects.all())
+    return ui.ask_choice('Project', choices=projects, default=default,
+                         category="project")
+
+
+def ask_labels(api, preset_labels):
+    all_labels = dict((unicode(l['name']).lower(), l['id']) for l in
+                      api.labels.all())
+    return ui.ask_multichoice('Labels', choices=all_labels,
+                              default=preset_labels, category="labels")
+
+
+def ask_date(api, preset_date):
+    return ui.ask_choice('Date', choices=ui.dateformats, default=preset_date,
+                         category="date", regex_choices=True)
+
+
+def ask_priority(api, preset_priority):
+    return ui.ask_choice('Priority', choices=['1', '2', '3', '4'],
+                         default=preset_priority, category="priority")
+
+
+def ask_description(api, preset_description):
+    ret = ui.get_input("Set description [{}]: ".format(preset_description))
+    if not ret:
+        return preset_description
+    return ret
+
+
 def gather_input(content, api, args, project=None):
     """Ask user for info about the new item."""
     content, proj, date, labels, priority = ui.parse_content(api, content)
-
     print()
     # TODO: colorize invalid project and label names (# and @), to highlight
     # what looks like typos
@@ -53,16 +84,10 @@ def gather_input(content, api, args, project=None):
     print()
 
     if not project:
-        projects = set(unicode(p['name']) for p in api.projects.all())
-        project = ui.ask_choice('Project', choices=projects, default=proj,
-                                category="project")
-    all_labels = set(unicode(l['name']).lower() for l in api.labels.all())
-    labels = ui.ask_multichoice('Labels', choices=all_labels, default=labels,
-                                category="labels")
-    date = ui.ask_choice('Date', choices=ui.dateformats, default=date,
-                         category="date", regex_choices=True)
-    priority = ui.ask_choice('Priority', choices=['1', '2', '3', '4'],
-                             default=priority, category="priority")
+        project = ask_project(api, proj)
+    labels = ask_labels(api, labels)
+    date = ask_date(api, date)
+    priority = ask_priority(api, priority)
     return content, project, date, labels, priority
 
 
@@ -78,6 +103,7 @@ def create_api(args):
     if api.is_authenticated():
         api.sync()
 
+
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     p = ui.get_argparser(usage="%(prog)s [options] MAILFILE",
@@ -90,10 +116,10 @@ if __name__ == '__main__':
     mail = todoist_gtd_utils.mail.SimpleMailParser(args.mail)
 
     print()
-    print(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
-                                'Subject', body=False))
+    cprint(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
+                                 'Subject', body=False), attrs=['bold'])
     print()
-    print(utils.trim_too_long(mail.get_body(), 1000))
+    cprint(utils.trim_too_long(mail.get_body(), 2000), attrs=['dark'])
     # TODO: trim out quoted text, if not enough space in 1000 chars (or 20
     # lines)
     print()
@@ -101,12 +127,15 @@ if __name__ == '__main__':
     t = Thread(target=create_api, name='create_api', kwargs={'args': args})
     t.start()
 
-    what = ui.ask_choice('New project or single task?', default='task',
-                         choices=['project', 'task'])
+    try:
+        what = ui.ask_choice('New project or single task?', default='task',
+                             choices=['project', 'task'])
+    except EOFError:
+        sys.exit(0)
     goal = None
     if what == 'project':
-        goal = unicode(raw_input("Project end goal: "), 'utf-8')
-    next = unicode(raw_input("Next action: "), 'utf-8')
+        goal = ui.get_input("Project end goal (project name)? ")
+    next = ui.get_input("What's the Next action? ")
 
     t.join()
 
@@ -117,9 +146,9 @@ if __name__ == '__main__':
 
     if goal:
         parent = api.get_projects_by_name('Work')
-        sub_pr = api.get_child_projects(parent)
+        sub_pr = parent.get_child_projects()
         # - ask for what position
-        pos = ui.ask_choice_of_list("Where to put new project:",
+        pos = ui.ask_choice_of_list("Choose position of new project:",
                                     api.get_project_name(sub_pr))
         pos = sub_pr[pos]['item_order']
         new_pr = api.projects.add(goal, indent=parent['indent'] + 1,
@@ -129,32 +158,86 @@ if __name__ == '__main__':
                                                      'Message-Id', '_Reply-To',
                                                      '*Subject', '_Sender'))
         api.force_commit()
+        goal = new_pr['id']
         print("Project created")
 
-    while True:
-        next, project, date, labels, priority = gather_input(next, api, args,
-                                                             project=goal)
-        api_pri = utils.frontend_priority_to_api(priority)
+    next, project, date, labels, priority = gather_input(next, api, args,
+                                                         project=goal)
+    print("Project: {}".format(project))
+    api_pri = utils.frontend_priority_to_api(priority)
 
-        # Add emoji for mark that item came by email:
-        i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
-                          project_id=api.get_projects_by_name(project)['id'],
-                          date_string=date, labels=api.get_label_id(labels))
-        print("\nNew item:\n{}\n".format(i))
-        if ui.ask_confirmation("Okay to create?", args):
-            api.force_commit()
+    i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
+                      project_id=project, date_string=date, labels=labels)
+    print("\nCreated new item:\n{}\n".format(i))
+    api.force_commit()
+    api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
+                                                 'Message-Id', '_Reply-To',
+                                                 '*Subject', '_Sender'))
+    api.force_commit()
+    api.sync()
+    # For post-edits by user:
 
-            api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
-                                                         'Message-Id',
-                                                         '_Reply-To',
-                                                         '*Subject',
-                                                         '_Sender'))
-            api.force_commit()
-            print("\nItem created")
-            api.sync()
-            new = api.items.all(lambda x: x['id'] == i['id'])[0]
-            print(new)
-            break
-        else:
-            print("\nGoing all over again...\n")
-            next = unicode(raw_input("What is it? "), 'utf-8')
+    def delete_item():
+        i.delete()
+        api.force_commit()
+        print("Item deleted. Most commands now doesn't work.")
+
+    def set_project():
+        p = ask_project(api, i.get_project()['name'])
+        i.update(project_id=p)
+        api.force_commit()
+        print("Project updated")
+
+    def set_labels():
+        l = ask_labels(api, api.get_label_name(i['labels']))
+        i.update(labels=l)
+        api.force_commit()
+        print("Labels updated")
+
+    def set_date():
+        d = ask_date(api, i['date_string'])
+        i.update(date_string=d)
+        api.force_commit()
+        print("Date updated")
+
+    def set_priority():
+        p = ask_priority(api, i['priority'])
+        i.update(priority=p)
+        api.force_commit()
+        print("Priority updated")
+
+    def set_description():
+        c = ask_description(api, i['content'])
+        i.update(content=c)
+        api.force_commit()
+        print("Description updated")
+
+    def view_item():
+        # TODO: User item.get_presentation() instead! Move missing parts there,
+        # if needed
+        cprint(i, attrs=['bold'])
+        print('')
+        for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==
+                                               i['id'])):
+            cprint("Note {}, from {}:".format(n, note['posted']),
+                   on_color='on_grey', color='blue')
+            cprint(note['content'], attrs=['dark'])
+            print('')
+
+    def edit_attachments():
+        # TODO
+        # 1. list attachments
+        # 2. choose an attachment
+        # 3. start editor to edit it
+        # 4. if saved, update in todoist
+        pass
+
+    ui.ask_menu({'D': ('Delete item', delete_item),
+                 'l': ('Edit labels', set_labels),
+                 'd': ('Edit date', set_date),
+                 'e': ('Edit description', set_description),
+                 'p': ('Set project', set_project),
+                 'v': ('View task', view_item),
+                 'r': ('Set priority', set_priority),
+                 'a': ('Edit attachments', edit_attachments),
+                 }, prompt="Edit more? (? for options) ")

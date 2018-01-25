@@ -56,6 +56,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
         except ValueError:
             return response.text
 
+    def get(self, *args, **kwargs):
+        """Hack to fix bug in todoist, calling on get instead of _get"""
+        return self._get(*args, **kwargs)
+
     def _post(self, call, url=None, **kwargs):
         """Override to raise HTTP errors"""
         if not url:

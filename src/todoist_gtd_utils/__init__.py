@@ -14,6 +14,7 @@ TODO:
 """
 
 from datetime import datetime
+import io
 
 import todoist
 from todoist.api import SyncError
@@ -180,6 +181,17 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """
         self.reset_state()
         self.sync()
+
+    def upload_add_string(self, filedata, filename=None, **kwargs):
+        """Like `api.uploads.add`, but with data loaded in string."""
+        data = {'token': self.token}
+        data.update(kwargs)
+        f = io.BytesIO(filedata)
+        if filename:
+            f.name = filename
+            data['file_name'] = filename
+        files = {'file': filedata}
+        return self._post('uploads/add', data=data, files=files)
 
 
 class HelperProject(todoist.models.Project):
@@ -441,7 +453,8 @@ class HelperProjectNote(todoist.models.ProjectNote):
         post.append(self.get_posted_time().strftime('%Y-%M-%d %H:%m'))
         poststr = ' | '.join(post)
         content = utils.trim_too_long(self['content'],
-                                      max - 3 - len(poststr)).replace('\n', ' ')
+                                      max - 3 - len(poststr)).replace('\n',
+                                                                      ' ')
         return (colored(content, attrs=['dark']) + ' | ' + poststr)
 
     def __str__(self):

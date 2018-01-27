@@ -173,10 +173,22 @@ if __name__ == '__main__':
     api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                  'Message-Id', '_Reply-To',
                                                  '*Subject', '_Sender'))
+    # Add file attachments, if given in mail
+    for a_type, a_name, a_content in mail.get_attachments():
+        print("File: {} ({}) ({} bytes)".format(a_name, a_type,
+                                                len(a_content)))
+        if ui.ask_confirmation("Want to upload/save this attachment?"):
+            resp = api.upload_add_string(a_content, a_name)
+            if resp['upload_state'] != 'completed':
+                print("Upload status of '{}': {}".format(resp['upload_state'],
+                                                         resp['file_name']))
+            api.notes.add(i['id'], 'Mail attachment: {}'.format(a_name),
+                          file_attachment=resp)
+
     api.force_commit()
     api.sync()
-    # For post-edits by user:
 
+    # For post-edits by user:
     def delete_item():
         i.delete()
         api.force_commit()
@@ -219,9 +231,9 @@ if __name__ == '__main__':
         print('')
         for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==
                                                i['id'])):
-            cprint("Note {}, from {}:".format(n, note['posted']),
+            cprint("Note {}, from {}:".format(n, note.data.get('posted')),
                    on_color='on_grey', color='blue')
-            cprint(note['content'], attrs=['dark'])
+            cprint(note.data.get('content'), attrs=['dark'])
             print('')
 
     def edit_attachments():

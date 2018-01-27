@@ -165,11 +165,16 @@ class TodoistGTD(todoist.api.TodoistAPI):
         fix the issue:
 
         """
-        try:
-            self.commit(raise_on_error=True)
-        except SyncError:
-            self.commit(raise_on_error=True)
-        return True
+        attempts = 5
+        while True:
+            attempts -= 1
+            try:
+                self.commit(raise_on_error=True)
+            except SyncError:
+                if attempts > 0:
+                    continue
+                raise
+            return True
 
     def fullsync(self):
         """Force a fullsync, since `sync()` fails sometimes.

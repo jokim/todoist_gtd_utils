@@ -43,7 +43,7 @@ class SimpleMailParser(object):
                      email.header.decode_header(raw)))
 
     def get_unicoded_payload(self, p):
-        """Try to return a unicodified payload.
+        """Try to return a unicodified payload of text parts.
 
         Should accept badly encoded data without failing.
 
@@ -63,8 +63,17 @@ class SimpleMailParser(object):
         txt = self.get_unicoded_payload(p)
         if txt is None:
             return ''
+        if p.get_content_maintype() != 'text':
+            # Only give a hint about that its existence. Might want to remove
+            # this.
+            return '<{}>'.format(p.get_content_type())
         if p.get_content_type() == 'text/html':
             txt = self.filter_html(txt)
+        elif p.get_content_type() == 'text/plain':
+            pass
+        else:
+            print("Unhandled content type: {}".format(p.get_content_type()))
+
         # Add more content types to handle here
 
         # Remove extra spaces
@@ -95,6 +104,29 @@ class SimpleMailParser(object):
         else:
             load = self.get_decoded_payload(self.mail)
             return self.colorize_text_body(load)
+
+    def get_attachments(self):
+        """Get a list of payloads that are not text.
+
+        :rtype: list
+        :return:
+            A list of attachments, in a dict with the elements::
+
+                (CONTENT-TYPE, FILENAME, STRING-OF-DATA)
+
+                ('application/pdf', 'report.pdf', '%PDF...')
+
+        """
+        ret = []
+        for p in self.mail.walk():
+            if p.get_content_maintype() == 'multipart':
+                continue
+            if p.get_content_maintype() != 'text':
+                ret.append((p.get_content_type(),
+                            p.get_filename(),
+                            p.get_payload(decode=True)))
+            # TODO: other content types to include?
+        return ret
 
     def colorize_text_body(self, body):
         """Add some formatting to mail body."""

@@ -302,7 +302,7 @@ class HelperProject(todoist.models.Project):
         # - the number of active items
         # - next due date in project
 
-        if self['has_more_notes']:
+        if self.data.get('has_more_notes'):
             # TODO: get the number of notes
             post.append("(X notes)")
 

@@ -15,10 +15,8 @@ You will then be asked for content, project, labels and date.
 
 TODOs:
 
-- Add unittesting!
+- Add unittesting
 - Add bash coloring
-- Prettify presentation of mail headers on multiple, indented lines
-- Support signals, like CTRL+C and CTRL+D when getting input
 
 """
 
@@ -168,7 +166,7 @@ if __name__ == '__main__':
 
     i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
                       project_id=project, date_string=date, labels=labels)
-    print("\nCreated new item:\n{}\n".format(i))
+    cprint("\nCreated new item:\n{}\n".format(i), attrs=['bold'])
     api.force_commit()
     api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                  'Message-Id', '_Reply-To',
@@ -231,9 +229,10 @@ if __name__ == '__main__':
         print('')
         for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==
                                                i['id'])):
-            cprint("Note {}, from {}:".format(n, note.data.get('posted')),
+            cprint("Note {}, from {}:".format(n + 1, note.data.get('posted')),
                    on_color='on_grey', color='blue')
-            cprint(note.data.get('content'), attrs=['dark'])
+            cprint(utils.trim_too_long(note.data.get('content'), 2000),
+                   attrs=['dark'])
             print('')
 
     def edit_attachments():

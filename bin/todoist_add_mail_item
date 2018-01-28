@@ -117,7 +117,7 @@ if __name__ == '__main__':
     cprint(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
                                  'Subject', body=False), attrs=['bold'])
     print()
-    cprint(utils.trim_too_long(mail.get_body(), 5000), attrs=['dark'])
+    cprint(utils.trim_too_long(mail.get_body_text(), 5000), attrs=['dark'])
     # TODO: trim out quoted text, if not enough space in 1000 chars (or 20
     # lines)
     print()
@@ -154,7 +154,8 @@ if __name__ == '__main__':
         i = api.items.add('* Original request', project_id=new_pr['id'])
         api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                      'Message-Id', '_Reply-To',
-                                                     '*Subject', '_Sender'))
+                                                     '*Subject', '_Sender',
+                                                     color=False))
         api.force_commit()
         goal = new_pr['id']
         print("Project created")
@@ -170,7 +171,8 @@ if __name__ == '__main__':
     api.force_commit()
     api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                  'Message-Id', '_Reply-To',
-                                                 '*Subject', '_Sender'))
+                                                 '*Subject', '_Sender',
+                                                 color=False))
     # Add file attachments, if given in mail
     for a_type, a_name, a_content in mail.get_attachments():
         print("File: {} ({}) ({} bytes)".format(a_name, a_type,
@@ -223,7 +225,7 @@ if __name__ == '__main__':
         print("Description updated")
 
     def view_item():
-        # TODO: User item.get_presentation() instead! Move missing parts there,
+        # TODO: User item.get_presentation() instead? Move missing parts there,
         # if needed
         cprint(i, attrs=['bold'])
         print('')

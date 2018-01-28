@@ -91,19 +91,17 @@ class SimpleMailParser(object):
         # TODO: Fix missing data here
         return txt
 
-    def get_body(self):
-        # TODO: support encoding
-        # TODO: support cutting out commented text, so only the last message
-        # remains - makes it easier to present
-        if self.mail.is_multipart():
-            ret = []
-            for raw in self.mail.get_payload():
-                load = self.get_decoded_payload(raw)
-                ret.append(self.colorize_text_body(load))
-            return '\n'.join(ret)
-        else:
-            load = self.get_decoded_payload(self.mail)
-            return self.colorize_text_body(load)
+    def get_body_text(self, color=True):
+        """Get text parts of body."""
+        ret = []
+        for p in self.mail.walk():
+            if p.get_content_maintype() == 'multipart':
+                continue
+            load = self.get_decoded_payload(p)
+            if color:
+                load = self.colorize_text_body(load)
+            ret.append(load)
+        return '\n'.join(ret)
 
     def get_attachments(self):
         """Get a list of payloads that are not text.
@@ -148,7 +146,8 @@ class SimpleMailParser(object):
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.
 
-        Some colors are added, for readability.
+        If `kwargs` *body* is False, then body is not included. If `kwargs`
+        *color* is False, then color and formatting codes are not included.
 
         Each *args argument could be prefixed with:
 
@@ -157,6 +156,7 @@ class SimpleMailParser(object):
 
         """
         body = kwargs.get('body', True)
+        color = kwargs.get('color', True)
         lines = []
         for key in args:
             bold = optional = False
@@ -176,7 +176,7 @@ class SimpleMailParser(object):
                 lines.append('{}: {}'.format(key, value))
         if body:
             lines.append('')
-            lines.append(self.get_body())
+            lines.append(self.get_body_text(color=color))
         return '\n'.join(lines)
 
 

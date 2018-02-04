@@ -267,8 +267,8 @@ if __name__ == '__main__':
     api = TodoistGTD(configfiles=args.configfile, token=args.token)
     if not api.is_authenticated():
         userinput.login_dialog(api)
-    print("Syncing with Todoist…")
-    api.sync()
+    print("Full sync with Todoist…")
+    api.fullsync()
 
     cleanup_fields(api)
     api.sync()

@@ -14,6 +14,7 @@ TODO:
 """
 
 from datetime import datetime
+import io
 
 import todoist
 from todoist.api import SyncError
@@ -55,6 +56,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
             return response.json()
         except ValueError:
             return response.text
+
+    def get(self, *args, **kwargs):
+        """Hack to fix bug in todoist, calling on get instead of _get"""
+        return self._get(*args, **kwargs)
 
     def _post(self, call, url=None, **kwargs):
         """Override to raise HTTP errors"""
@@ -160,11 +165,16 @@ class TodoistGTD(todoist.api.TodoistAPI):
         fix the issue:
 
         """
-        try:
-            self.commit(raise_on_error=True)
-        except SyncError:
-            self.commit(raise_on_error=True)
-        return True
+        attempts = 5
+        while True:
+            attempts -= 1
+            try:
+                self.commit(raise_on_error=True)
+            except SyncError:
+                if attempts > 0:
+                    continue
+                raise
+            return True
 
     def fullsync(self):
         """Force a fullsync, since `sync()` fails sometimes.
@@ -176,6 +186,17 @@ class TodoistGTD(todoist.api.TodoistAPI):
         """
         self.reset_state()
         self.sync()
+
+    def upload_add_string(self, filedata, filename=None, **kwargs):
+        """Like `api.uploads.add`, but with data loaded in string."""
+        data = {'token': self.token}
+        data.update(kwargs)
+        f = io.BytesIO(filedata)
+        if filename:
+            f.name = filename
+            data['file_name'] = filename
+        files = {'file': filedata}
+        return self._post('uploads/add', data=data, files=files)
 
 
 class HelperProject(todoist.models.Project):
@@ -298,7 +319,7 @@ class HelperProject(todoist.models.Project):
         # - the number of active items
         # - next due date in project
 
-        if self['has_more_notes']:
+        if self.data.get('has_more_notes'):
             # TODO: get the number of notes
             post.append("(X notes)")
 
@@ -437,7 +458,8 @@ class HelperProjectNote(todoist.models.ProjectNote):
         post.append(self.get_posted_time().strftime('%Y-%M-%d %H:%m'))
         poststr = ' | '.join(post)
         content = utils.trim_too_long(self['content'],
-                                      max - 3 - len(poststr)).replace('\n', ' ')
+                                      max - 3 - len(poststr)).replace('\n',
+                                                                      ' ')
         return (colored(content, attrs=['dark']) + ' | ' + poststr)
 
     def __str__(self):

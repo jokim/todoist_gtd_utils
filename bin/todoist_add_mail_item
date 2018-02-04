@@ -15,10 +15,8 @@ You will then be asked for content, project, labels and date.
 
 TODOs:
 
-- Add unittesting!
+- Add unittesting
 - Add bash coloring
-- Prettify presentation of mail headers on multiple, indented lines
-- Support signals, like CTRL+C and CTRL+D when getting input
 
 """
 
@@ -119,7 +117,7 @@ if __name__ == '__main__':
     cprint(mail.get_presentation('Date', 'From', '_Sender', 'To', '_Cc',
                                  'Subject', body=False), attrs=['bold'])
     print()
-    cprint(utils.trim_too_long(mail.get_body(), 2000), attrs=['dark'])
+    cprint(utils.trim_too_long(mail.get_body_text(), 5000), attrs=['dark'])
     # TODO: trim out quoted text, if not enough space in 1000 chars (or 20
     # lines)
     print()
@@ -156,7 +154,8 @@ if __name__ == '__main__':
         i = api.items.add('* Original request', project_id=new_pr['id'])
         api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                      'Message-Id', '_Reply-To',
-                                                     '*Subject', '_Sender'))
+                                                     '*Subject', '_Sender',
+                                                     color=False))
         api.force_commit()
         goal = new_pr['id']
         print("Project created")
@@ -168,15 +167,28 @@ if __name__ == '__main__':
 
     i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
                       project_id=project, date_string=date, labels=labels)
-    print("\nCreated new item:\n{}\n".format(i))
+    cprint("\nCreated new item:\n{}\n".format(i), attrs=['bold'])
     api.force_commit()
     api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
                                                  'Message-Id', '_Reply-To',
-                                                 '*Subject', '_Sender'))
+                                                 '*Subject', '_Sender',
+                                                 color=False))
+    # Add file attachments, if given in mail
+    for a_type, a_name, a_content in mail.get_attachments():
+        print("File: {} ({}) ({} bytes)".format(a_name, a_type,
+                                                len(a_content)))
+        if ui.ask_confirmation("Want to upload/save this attachment?"):
+            resp = api.upload_add_string(a_content, a_name)
+            if resp['upload_state'] != 'completed':
+                print("Upload status of '{}': {}".format(resp['upload_state'],
+                                                         resp['file_name']))
+            api.notes.add(i['id'], 'Mail attachment: {}'.format(a_name),
+                          file_attachment=resp)
+
     api.force_commit()
     api.sync()
-    # For post-edits by user:
 
+    # For post-edits by user:
     def delete_item():
         i.delete()
         api.force_commit()
@@ -213,15 +225,16 @@ if __name__ == '__main__':
         print("Description updated")
 
     def view_item():
-        # TODO: User item.get_presentation() instead! Move missing parts there,
+        # TODO: User item.get_presentation() instead? Move missing parts there,
         # if needed
         cprint(i, attrs=['bold'])
         print('')
         for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==
                                                i['id'])):
-            cprint("Note {}, from {}:".format(n, note['posted']),
+            cprint("Note {}, from {}:".format(n + 1, note.data.get('posted')),
                    on_color='on_grey', color='blue')
-            cprint(note['content'], attrs=['dark'])
+            cprint(utils.trim_too_long(note.data.get('content'), 2000),
+                   attrs=['dark'])
             print('')
 
     def edit_attachments():

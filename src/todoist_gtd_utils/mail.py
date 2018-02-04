@@ -16,10 +16,10 @@ import email.header
 from quopri import ishex
 from quopri import unhex
 import html2text
+from termcolor import colored
 
 from todoist_gtd_utils import utils
 from todoist_gtd_utils.utils import to_unicode
-import todoist_gtd_utils.mail
 
 
 class SimpleMailParser(object):
@@ -43,7 +43,7 @@ class SimpleMailParser(object):
                      email.header.decode_header(raw)))
 
     def get_unicoded_payload(self, p):
-        """Try to return a unicodified payload.
+        """Try to return a unicodified payload of text parts.
 
         Should accept badly encoded data without failing.
 
@@ -55,8 +55,7 @@ class SimpleMailParser(object):
             load = to_unicode(p.get_payload(decode=False), charset, 'replace')
             cte = self.mail.get('content-transfer-encoding', '').lower()
             if cte == 'quoted-printable':
-                return todoist_gtd_utils.mail.decode_quoted_printable(load,
-                                                                      header=0)
+                return decode_quoted_printable(load, header=0)
             return load
 
     def get_decoded_payload(self, p):
@@ -64,14 +63,23 @@ class SimpleMailParser(object):
         txt = self.get_unicoded_payload(p)
         if txt is None:
             return ''
+        if p.get_content_maintype() != 'text':
+            # Only give a hint about that its existence. Might want to remove
+            # this.
+            return '<{}>'.format(p.get_content_type())
         if p.get_content_type() == 'text/html':
             txt = self.filter_html(txt)
+        elif p.get_content_type() == 'text/plain':
+            pass
+        else:
+            print("Unhandled content type: {}".format(p.get_content_type()))
+
         # Add more content types to handle here
 
         # Remove extra spaces
         txt = re.sub('  +', ' ', txt).strip()
         # Remove extra lines
-        txt = re.sub('\n\s*\n', '\n', txt).strip()
+        txt = re.sub('\n\n\s*\n', '\n', txt).strip()
         return txt
 
     @staticmethod
@@ -83,18 +91,63 @@ class SimpleMailParser(object):
         # TODO: Fix missing data here
         return txt
 
-    def get_body(self):
-        # TODO: support encoding
-        if self.mail.is_multipart():
-            ret = []
-            for raw in self.mail.get_payload():
-                ret.append(self.get_decoded_payload(raw))
-            return '\n'.join(ret)
-        else:
-            return self.get_decoded_payload(self.mail)
+    def get_body_text(self, color=True):
+        """Get text parts of body."""
+        ret = []
+        for p in self.mail.walk():
+            if p.get_content_maintype() == 'multipart':
+                continue
+            load = self.get_decoded_payload(p)
+            if color:
+                load = self.colorize_text_body(load)
+            ret.append(load)
+        return '\n'.join(ret)
+
+    def get_attachments(self):
+        """Get a list of payloads that are not text.
+
+        :rtype: list
+        :return:
+            A list of attachments, in a dict with the elements::
+
+                (CONTENT-TYPE, FILENAME, STRING-OF-DATA)
+
+                ('application/pdf', 'report.pdf', '%PDF...')
+
+        """
+        ret = []
+        for p in self.mail.walk():
+            if p.get_content_maintype() == 'multipart':
+                continue
+            if p.get_content_maintype() != 'text':
+                ret.append((p.get_content_type(),
+                            p.get_filename(),
+                            p.get_payload(decode=True)))
+            # TODO: other content types to include?
+        return ret
+
+    def colorize_text_body(self, body):
+        """Add some formatting to mail body."""
+        ret = []
+        in_signature = False
+        for line in body.split('\n'):
+            if line.lstrip().startswith('>'):
+                ret.append(colored(line, attrs=['dark']))
+                continue
+            if line == '-- ':
+                in_signature = True
+            if in_signature:
+                ret.append(colored(line, attrs=['dark']))
+                continue
+            ret.append(line)
+
+        return '\n'.join(ret)
 
     def get_presentation(self, *args, **kwargs):
         """Return a presentable formatted mail.
+
+        If `kwargs` *body* is False, then body is not included. If `kwargs`
+        *color* is False, then color and formatting codes are not included.
 
         Each *args argument could be prefixed with:
 
@@ -103,6 +156,7 @@ class SimpleMailParser(object):
 
         """
         body = kwargs.get('body', True)
+        color = kwargs.get('color', True)
         lines = []
         for key in args:
             bold = optional = False
@@ -122,7 +176,7 @@ class SimpleMailParser(object):
                 lines.append('{}: {}'.format(key, value))
         if body:
             lines.append('')
-            lines.append(self.get_body())
+            lines.append(self.get_body_text(color=color))
         return '\n'.join(lines)
 
 

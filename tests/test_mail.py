@@ -150,7 +150,7 @@ def test_simplemail_setup():
 
 def test_empty_mail():
     p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(''))
-    body = p.get_body()
+    body = p.get_body_text()
     assert body == ''
     pres = p.get_presentation(body=False).strip()
     assert pres == ''
@@ -160,7 +160,7 @@ def test_empty_mail():
 
 def test_plain_mail():
     p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(raw_mail_plain))
-    body = p.get_body()
+    body = p.get_body_text()
     assert 'short mail' in body
     pres = p.get_presentation(body=False).strip()
     assert len(pres) == 0
@@ -175,7 +175,7 @@ def test_plain_mail():
 
 def test_latin1_mail():
     p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(raw_mail_latin1))
-    body = p.get_body()
+    body = p.get_body_text()
     assert 'with ø and å, as a test' in body
     pres = p.get_presentation('to')
     print pres
@@ -184,7 +184,7 @@ def test_latin1_mail():
 
 def test_utf8_mail():
     p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(raw_mail_utf8))
-    body = p.get_body()
+    body = p.get_body_text()
     assert 'æ and å!' in body
     pres = p.get_presentation('from')
     assert "Joakim Hovlandsvåg" in pres
@@ -196,7 +196,7 @@ def test_invalid_encoding():
     """Don't crash if mail is not encoded properly"""
     p = todoist_gtd_utils.mail.SimpleMailParser(io.StringIO(
                     raw_mail_invalid_encoded))
-    body = p.get_body()
+    body = p.get_body_text()
     assert 'å' in body
     pres = p.get_presentation('from', 'to', body=False)
     assert 'å' in pres
@@ -205,7 +205,7 @@ def test_invalid_encoding():
 def test_multipart():
     p = todoist_gtd_utils.mail.SimpleMailParser(
             io.StringIO(raw_mail_multipart))
-    body = p.get_body()
+    body = p.get_body_text()
     print body
     assert 'plaintext title' in body
     assert 'HTML title' in body
@@ -220,7 +220,7 @@ def test_multipart():
 def test_html_mail_prettified():
     p = todoist_gtd_utils.mail.SimpleMailParser(
             io.StringIO(raw_mail_multipart))
-    body = p.get_body()
+    body = p.get_body_text()
     print body
     assert 'HTML title' in body
     # Remove CSS and other metadata

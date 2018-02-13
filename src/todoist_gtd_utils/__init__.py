@@ -184,6 +184,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
         You could instead just remove local cache files.
 
         """
+        self.sync()
         self.reset_state()
         self.sync()
 
@@ -201,6 +202,24 @@ class TodoistGTD(todoist.api.TodoistAPI):
 
 class HelperProject(todoist.models.Project):
     """Helper methods for project"""
+
+    def get_parent_project(self):
+        """Return the project's parent project.
+
+        Parent is set indirectly, depending on indent and item_order.
+
+        Return None if the project is at top indent level.
+
+        """
+        order = self['item_order']
+        indent = self['indent']
+        if not indent:
+            return None
+        projs = self.api.projects.all(lambda x: x['item_order'] < order and
+                                                x['indent'] < indent)
+        # Projects are ordered by item_order, so the first project that match
+        # the criterias, going backwards, should be self's parent.
+        return projs[-1]
 
     def get_child_projects(self):
         """Get a list of all child projects of self
@@ -280,6 +299,7 @@ class HelperProject(todoist.models.Project):
 
         """
         print(self.get_short_preview())
+        print("\nParent project: {}".format(self.get_parent_project()))
         children = self.get_child_projects()
         if children:
             print("\nChild project:")

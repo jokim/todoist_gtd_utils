@@ -33,6 +33,8 @@ def _get_child_project_ids(api, project, include_self=True):
 
 def _get_items(api, project_ids):
     """Return a list of IDs for all items in given projects IDs."""
+    if not isinstance(project_ids, (list, tuple)):
+        project_ids = [project_ids]
     return api.items.all(lambda x: x['project_id'] in project_ids)
 
 
@@ -54,8 +56,20 @@ def cleanup_fields(api):
     _cleanup_whitespace(api)
 
 
-def ask_about_inactive_project(api, item, project):
-    """Ask what to do with a given, inactive project."""
+def ask_about_inactive_project(api, item, project=None):
+    """Ask what to do with a given, inactive project or item.
+
+    :type item: GTDItem
+    :param item:
+        The item that is affected and/or affecting, and might be done something
+        with.
+
+    :type project: HelperProject
+    :param project:
+        What project to move. If set to None, only the item is affected, e.g.
+        moved.
+
+    """
     targetprojects = api.config.get_commalist('gtd', 'target-projects')
     print("Inactive project «{}» has a task with due date:"
           .format(project['name']))
@@ -71,7 +85,13 @@ def ask_about_inactive_project(api, item, project):
                                         category='project')
             targetprojects = [move]
         new_parent = api.get_projects_by_name(targetprojects[0])
-        project.activate_project(new_parent)
+        if project:
+            # Move the whole project
+            project.activate_project(new_parent)
+        else:
+            # Move only item
+            item.update(project_id=new_parent['id'])
+
         api.commit()
         print("Project moved to GTD-project: {}".format(new_parent['name']))
     elif choice == 'delay':
@@ -94,7 +114,15 @@ def process_active_projects_in_someday(api):
 
     """
     someday_proj = api.get_projects_by_name(somedaymaybe_project_name)
-    child_pr = _get_child_project_ids(api, someday_proj)
+    items = _get_items(api, someday_proj)
+    for i in items:
+        if i.is_due():
+            try:
+                ask_about_inactive_project(api, i)
+            except EOFError:
+                continue
+
+    child_pr = _get_child_project_ids(api, someday_proj, include_self=False)
     items = _get_items(api, child_pr)
     for i in items:
         if i.is_due():

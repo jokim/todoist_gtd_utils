@@ -93,7 +93,6 @@ def process_active_projects_in_someday(api):
     is asked to activate the project.
 
     """
-    print("\n== Active projects in Someday/Maybe? ==")
     someday_proj = api.get_projects_by_name(somedaymaybe_project_name)
     child_pr = _get_child_project_ids(api, someday_proj)
     items = _get_items(api, child_pr)
@@ -163,7 +162,6 @@ def restore_labels_in_projects(api):
         proj = api.get_projects_by_name(p)
         child_pr = _get_child_project_ids(api, proj)
         print("Processing {} projects from {}…".format(len(child_pr), p))
-        print(api.get_project_name(child_pr))
         items = _get_items(api, child_pr)
         print("Processing {} items from {}…".format(len(items), p))
         item_ids.update(i['id'] for i in items)
@@ -272,8 +270,11 @@ if __name__ == '__main__':
 
     cleanup_fields(api)
     api.sync()
+    print("\n== Prosessing Someday/Maybe ==")
     process_active_projects_in_someday(api)
-    restore_labels_in_projects(api)
     remove_labels_in_someday(api, args)
+
+    print("\n== Prosessing active projects ==")
+    restore_labels_in_projects(api)
     process_gtd_projects(api)
     print("sync done")

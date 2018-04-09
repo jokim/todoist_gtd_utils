@@ -393,6 +393,13 @@ class GTDItem(todoist.models.Item):
         """Return the item's project instance."""
         return self.api.projects.get_by_id(self['project_id'])
 
+    def move_to_project(self, new_parent):
+        """Helper method for easier move of item."""
+        if isinstance(new_parent, HelperProject):
+            new_parent = new_parent['id']
+        # TODO: Add more sanity checks here, since todoist doesn't seem to
+        # check much. Some of my test items disappeared, but not confirmed.
+        self.move(new_parent)
 
 class HumanItem(GTDItem):
     """Simpler representation of a todoist item (task)."""

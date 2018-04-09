@@ -13,7 +13,7 @@ TODO:
 
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 
 import todoist
@@ -359,15 +359,21 @@ class HelperProject(todoist.models.Project):
 class GTDItem(todoist.models.Item):
     """Add GTD functionality, and more, to tasks."""
 
-    def is_due(self):
-        """Return True if task is due today or overdue"""
+    def is_due(self, previous_days=0):
+        """Return True if task is due today or overdue.
+
+        :type previous_days: int
+        :param previous_days:
+            Include given number of days before today to consider it "due".
+
+        """
         # TODO: Verify that it's ONLY 'due_date_utc' that is used. Could
         # 'date_string' be checked as well?
         due = self.data['due_date_utc']
         if not due:
             return False
         due_date = utils.parse_utc_to_datetime(self.data['due_date_utc'])
-        return due_date <= datetime.today()
+        return due_date <= (datetime.today() + timedelta(previous_days))
 
     def is_title(self):
         """Tell if task is a title, i.e. not a task that can be completed.

@@ -196,7 +196,7 @@ if __name__ == '__main__':
 
     def set_project():
         p = ask_project(api, i.get_project()['name'])
-        i.update(project_id=p)
+        i.move_to_project(p)
         api.force_commit()
         print("Project updated")
 

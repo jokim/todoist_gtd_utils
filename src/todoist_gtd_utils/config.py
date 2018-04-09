@@ -26,6 +26,7 @@ default_settings = {
             },
         'gtd': {
             'target-projects': "GTD",
+            'activate-before-due-date': 0,
             },
         'cleanup': {
             'ignore-labels': None,

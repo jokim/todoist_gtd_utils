@@ -71,8 +71,11 @@ def ask_about_inactive_project(api, item, project=None):
 
     """
     targetprojects = api.config.get_commalist('gtd', 'target-projects')
-    print("Inactive project «{}» has a task with due date:"
-          .format(project['name']))
+    if project:
+        print("Inactive project «{}» has a task with due date:"
+              .format(project['name']))
+    else:
+        print("Inactive item with a due date:")
     print(item)
     choice = userinput.ask_choice("What to do?",
                                   ('activate', 'ignore', 'delay'),
@@ -92,14 +95,14 @@ def ask_about_inactive_project(api, item, project=None):
             # Move only item
             item.update(project_id=new_parent['id'])
 
-        api.commit()
+        api.force_commit()
         print("Project moved to GTD-project: {}".format(new_parent['name']))
     elif choice == 'delay':
         date = userinput.ask_choice("For how long?", userinput.dateformats,
                                     default='in 7 days', category='date',
                                     regex_choices=True)
         item.update(date_string=date)
-        api.commit()
+        api.force_commit()
         print("Task delayed")
     else:
         print("Ok. Ignore it, for now…")
@@ -113,10 +116,11 @@ def process_active_projects_in_someday(api):
     is asked to activate the project.
 
     """
+    grace_days = api.config.getint('gtd', 'activate-before-due-date')
     someday_proj = api.get_projects_by_name(somedaymaybe_project_name)
-    items = _get_items(api, someday_proj)
+    items = _get_items(api, [someday_proj['id']])
     for i in items:
-        if i.is_due():
+        if i.is_due(grace_days):
             try:
                 ask_about_inactive_project(api, i)
             except EOFError:
@@ -125,7 +129,7 @@ def process_active_projects_in_someday(api):
     child_pr = _get_child_project_ids(api, someday_proj, include_self=False)
     items = _get_items(api, child_pr)
     for i in items:
-        if i.is_due():
+        if i.is_due(grace_days):
             proj = api.projects.get_by_id(i['project_id'])
             try:
                 ask_about_inactive_project(api, i, proj)
@@ -299,10 +303,14 @@ if __name__ == '__main__':
     cleanup_fields(api)
     api.sync()
     print("\n== Prosessing Someday/Maybe ==")
+    print("Any projects/items that should have been active?")
     process_active_projects_in_someday(api)
+    print("Any labels that should be disabled?")
     remove_labels_in_someday(api, args)
 
     print("\n== Prosessing active projects ==")
+    print("Any labels that should be enabled?")
     restore_labels_in_projects(api)
+    print("\n== GTD review ==")
     process_gtd_projects(api)
     print("sync done")

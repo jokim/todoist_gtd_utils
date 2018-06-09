@@ -241,7 +241,8 @@ def _set_completer(choices):
     readline.parse_and_bind('tab: complete')
 
 
-def ask_choice(prompt, choices, default='', category='choice'):
+def ask_choice(prompt, choices, default=None, category='choice',
+               default_value=''):
     """Prompts user to select one of given choices.
 
     Warning: Choices can't have same value.
@@ -262,43 +263,32 @@ def ask_choice(prompt, choices, default='', category='choice'):
         TODO: Behave the same way for dicts and list, i.e. return key or index.
 
     :param default:
-        What to return if none is selected. If choices are a dict, the default
-        value must be a valid *key*, otherwize an error is raised.
+        Gets returned if user doesn't select anything. Doesn't care if
+        `default` is one of the choices.
+
+    :type default_value: unicode
+    :param default_value:
+        What is shown to the user as "default value". Uses `default` if this is
+        not set. Only used for presentation, not for return values.
 
     """
-    mapping = values = None
-    default_value = default
+    if not isinstance(choices, dict):
+        choices = dict(enumerate(choices))
+    mapping = dict((unicode(v), k) for k, v in choices.iteritems())
 
-    if isinstance(choices, dict):
-        # Invert dict, to find keys to return later:
-        mapping = dict((unicode(v), k) for k, v in choices.iteritems())
-        values = map(unicode, choices.values())
-        default_value = choices.get(default, '')
-    else:
-        values = choices
-
-    if default and default not in choices:
-        raise Exception("Default value {!r} missing from input"
-                        .format(default))
-
-    def get_return(input):
-        if mapping:
-            return mapping[input]
-        return input
-
-    _set_completer(values)
+    _set_completer(mapping)
     while True:
         raw = get_input(("{} [{}]: ".format(prompt, default_value)))
         if not raw:
             return default
         if raw == '?':
-            present_choices(values)
+            present_choices(mapping)
             continue
         raw = raw.strip()
-        if raw in values:
-            return get_return(raw)
+        if raw in mapping:
+            return mapping[raw]
         raw = raw.lower()
-        matches = filter(lambda x: raw in x.lower(), values)
+        matches = filter(lambda x: raw in x.lower(), mapping.keys())
         if matches:
             try:
                 ret = ask_choice_of_list("Narrow down (CTRL+D to cancel):",
@@ -308,7 +298,7 @@ def ask_choice(prompt, choices, default='', category='choice'):
                 print("Ok, cancel")
                 continue
             if ret is not None:
-                return get_return(matches[ret])
+                return mapping[matches[ret]]
         print("Invalid {}, please try again (? for overview)"
               .format(category))
 
@@ -345,7 +335,7 @@ def ask_filter(prompt, regex_choices, default=None, category='choice'):
 
 
 def ask_multichoice(prompt, choices, default=[], category='choice',
-                    separator=' '):
+                    separator=' ', default_value=''):
     """Prompts user to select one or many out of given choices.
 
     The user gets reprompted if invalid choice. If users gives blank answer,
@@ -363,40 +353,24 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
         Note: Values (and keys) must be unique to be selected.
 
     """
-    mapping = None
+    if not isinstance(choices, dict):
+        choices = dict(enumerate(choices))
+    mapping = dict((unicode(v), k) for k, v in choices.iteritems())
 
-    if isinstance(choices, dict):
-        # Invert dict, to find keys to return later:
-        mapping = dict((unicode(v), k) for k, v in choices.iteritems())
-        values = map(unicode, choices.values())
-        default_values = map(unicode, map(choices.get, default))
-    else:
-        values = choices
-        default_values = default
-
-    # TODO: assert that default is amongst choices
-
-    _set_completer(values)
-
-    def get_return(input):
-        if mapping:
-            return [mapping[i] for i in input]
-        return input
-
+    _set_completer(mapping)
     while True:
-        question = "{} [Default: {}]: ".format(prompt,
-                                               separator.join(default_values))
+        question = "{} [Default: {}]: ".format(prompt, default_value)
         raw = get_input(question)
         if not raw:
             return default
         if raw == '?':
-            present_choices(values)
+            present_choices(mapping)
             continue
         raw = raw.strip()
         selections = raw.split(separator)
-        invalid_selections = filter(lambda x: x not in values, selections)
+        invalid_selections = filter(lambda x: x not in mapping, selections)
         if not invalid_selections:
-            return get_return(selections)
+            return [mapping[i] for i in selections]
         print("Invalid {}: {}".format(category,
                                       separator.join(invalid_selections)))
         print("(return ? for overview)")

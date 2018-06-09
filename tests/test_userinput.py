@@ -80,14 +80,14 @@ def test_parse_dates():
 def test_ask_choice_simple():
     add_response("abc")
     answer = userinput.ask_choice(prompt="Enter data:", choices=['abc', 'def'])
-    assert answer == "abc"
+    assert answer == 0
 
 
 def test_ask_choice_default():
     add_response("")
     answer = userinput.ask_choice(prompt="Enter data:", choices=['abc', 'def'],
-                                  default="def")
-    assert answer == "def"
+                                  default=1)
+    assert answer == 1
 
 
 def test_ask_choice_dict():
@@ -97,22 +97,21 @@ def test_ask_choice_dict():
     assert answer == 'abc'
 
 
-def test_ask_choice_default_using_dict_values():
+def test_ask_choice_dict_default():
     add_response("")
+    default = 'ro98989ar'
     answer = userinput.ask_choice(prompt="",
                                   choices={'bob': 'Bob Johnson',
-                                           'kåre': 'Kåre Conradi',
-                                           'roar': 'Roar Angel',
                                            'mary': 'Mary Bee', },
-                                  default='roar')
-    assert answer == 'roar'
+                                  default=default)
+    assert answer == default
 
 
 def test_ask_multichoice_simple():
     add_response('abc ghi')
     answer = userinput.ask_multichoice(prompt="Enter data:",
                                        choices=['abc', 'def', 'ghi', 'other'])
-    assert answer == ['abc', 'ghi']
+    assert answer == [0, 2]
 
 
 def test_ask_multichoice_default():

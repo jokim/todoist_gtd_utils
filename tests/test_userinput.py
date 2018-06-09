@@ -18,6 +18,7 @@ def add_response(input):
 
 def raw_input2(prompt):
     """Mock raw_input"""
+    print(prompt)
     global _latest_responses
     last_response = _latest_responses.pop(0)
     return last_response.encode('utf-8')
@@ -114,9 +115,25 @@ def test_ask_multichoice_simple():
     assert answer == ['abc', 'ghi']
 
 
+def test_ask_multichoice_default():
+    add_response('')
+    answer = userinput.ask_multichoice(prompt="Enter data:",
+                                       default=['ghi', 'other'],
+                                       choices=['abc', 'def', 'ghi', 'other'])
+    assert answer == ['ghi', 'other']
+
+
 def test_ask_multichoice_dict():
-    add_response('abc ghi')
+    add_response('12 14')
     answer = userinput.ask_multichoice(
                             prompt="Enter data:",
                             choices={'abc': 12, 'def': 13, 'ghi': 14})
-    assert answer == [12, 14]
+    assert answer == ['abc', 'ghi']
+
+
+def test_ask_multichoice_dict_default():
+    add_response('')
+    answer = userinput.ask_multichoice(
+        prompt="Enter data:", choices={'abc': 12, 'def': 13, 'ghi': 14},
+        default=['def', 'ghi'])
+    assert answer == ['def', 'ghi']

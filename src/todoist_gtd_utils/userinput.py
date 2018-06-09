@@ -73,7 +73,7 @@ def dialog_new_item(api, name=None, project=None):
     date = ask_choice('Date', choices=dateformats,
                       default=parsed_input['date'], category="date",
                       regex_choices=True)
-    priority = ask_choice('Priority', choices=['1', '2', '3', '4'],
+    priority = ask_choice('Priority', choices=[1, 2, 3, 4],
                           default=parsed_input['priority'],
                           category="priority")
     api_pri = frontend_priority_to_api(priority)
@@ -192,7 +192,7 @@ def parse_priority(content):
     priority = 4
     match = re.search("!!([1-4])", content)
     if match:
-        priority = match.group(1)
+        priority = int(match.group(1))
         content = content.replace('!!{}'.format(priority), '')
     return content, priority
 
@@ -286,15 +286,18 @@ def ask_choice(prompt, choices, default='', category='choice',
 
     """
     mapping = values = None
+    default_value = default
+
     if isinstance(choices, dict):
         # Invert dict, to find keys to return later:
-        mapping = dict((v, k) for k, v in choices.iteritems())
-        values = choices.values()
+        mapping = dict((unicode(v), k) for k, v in choices.iteritems())
+        values = map(unicode, choices.values())
+        default_value = choices.get(default, '')
     else:
         values = choices
 
     if default and default not in choices:
-        raise Exception("Default value '{}' missing from input"
+        raise Exception("Default value {!r} missing from input"
                         .format(default))
 
     def get_return(input):
@@ -304,7 +307,7 @@ def ask_choice(prompt, choices, default='', category='choice',
 
     _set_completer(values)
     while True:
-        raw = get_input(("{} [{}]: ".format(prompt, default)))
+        raw = get_input(("{} [{}]: ".format(prompt, default_value)))
         if not raw:
             return default
         if raw == '?':
@@ -346,27 +349,51 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
     :type prompt: str
     :param prompt: What to ask the user for. Result: `Prompt [default]: `
 
-    """
-    _set_completer(choices)
+    :type choices: list, tuple or dict
+    :param choices:
+        The choices the user could select from. If dict, the user choose one of
+        the values while the key is returned.
 
-    def get_value(input):
-        if isinstance(choices, dict):
-            return [choices[i] for i in input]
+        Note: Values (and keys) must be unique to be selected.
+
+    """
+    mapping = None
+    default_value = default
+
+    if isinstance(choices, dict):
+        # Invert dict, to find keys to return later:
+        mapping = dict((unicode(v), k) for k, v in choices.iteritems())
+        values = map(unicode, choices.values())
+        default_values = [unicode(choices.get(d)) for d in default]
+    else:
+        values = choices
+        default_values = default
+
+    # TODO: assert that default is amongst choices
+
+    _set_completer(values)
+
+    def get_return(input):
+        if mapping:
+            return [mapping[i] for i in input]
         return input
 
     while True:
-        question = "{} [Default: {}]: ".format(prompt, separator.join(default))
+        question = "{} [Default: {}]: ".format(prompt,
+                                               separator.join(default_values))
         raw = get_input(question)
         if not raw:
-            return get_value(default)
+            return default
         if raw == '?':
-            present_choices(choices)
+            present_choices(values)
             continue
         raw = raw.strip()
         selections = raw.split(separator)
-        invalid_selections = filter(lambda x: x not in choices, selections)
+        print("Availbale values: {}".format(values))
+        print("Input separated: {}".format(selections))
+        invalid_selections = filter(lambda x: x not in values, selections)
         if not invalid_selections:
-            return get_value(selections)
+            return get_return(selections)
         print("Invalid {}: {}".format(category,
                                       separator.join(invalid_selections)))
         print("(return ? for overview)")

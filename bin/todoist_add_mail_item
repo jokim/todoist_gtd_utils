@@ -42,36 +42,6 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 
-def ask_project(api, default):
-    projects = dict((unicode(p['name']), p['id']) for p in api.projects.all())
-    return ui.ask_choice('Project', choices=projects, default=default,
-                         category="project")
-
-
-def ask_labels(api, preset_labels):
-    all_labels = dict((unicode(l['name']).lower(), l['id']) for l in
-                      api.labels.all())
-    return ui.ask_multichoice('Labels', choices=all_labels,
-                              default=preset_labels, category="labels")
-
-
-def ask_date(api, preset_date):
-    return ui.ask_choice('Date', choices=ui.dateformats, default=preset_date,
-                         category="date", regex_choices=True)
-
-
-def ask_priority(api, preset_priority):
-    return ui.ask_choice('Priority', choices=['1', '2', '3', '4'],
-                         default=preset_priority, category="priority")
-
-
-def ask_description(api, preset_description):
-    ret = ui.get_input("Set description [{}]: ".format(preset_description))
-    if not ret:
-        return preset_description
-    return ret
-
-
 def gather_input(content, api, args, project=None):
     """Ask user for info about the new item."""
     content, proj, date, labels, priority = ui.parse_content(api, content)

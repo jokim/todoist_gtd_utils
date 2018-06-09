@@ -10,6 +10,8 @@ TODO:
 - Fix better config
 - todoist's own code is not optimal for my use, e.g. at script startup and some
   bugs. Create my own, lightweight client, using the REST API directly?
+- Create a global project menu, and a task menu, with all options needed for
+  most situations.
 
 """
 

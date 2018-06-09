@@ -9,10 +9,12 @@ from todoist_gtd_utils import userinput
 
 _latest_responses = []
 
+
 def add_response(input):
     """Feed user input"""
     global _latest_responses
     _latest_responses.append(input)
+
 
 def raw_input2(prompt):
     """Mock raw_input"""
@@ -90,8 +92,19 @@ def test_ask_choice_default():
 def test_ask_choice_dict():
     add_response("second")
     answer = userinput.ask_choice(prompt="",
-                                  choices={'first': 1, 'second': 20})
-    assert answer == 20
+                                  choices={1: 'first', 'abc': 'second'})
+    assert answer == 'abc'
+
+
+def test_ask_choice_default_using_dict_values():
+    add_response("")
+    answer = userinput.ask_choice(prompt="",
+                                  choices={'bob': 'Bob Johnson',
+                                           'kåre': 'Kåre Conradi',
+                                           'roar': 'Roar Angel',
+                                           'mary': 'Mary Bee', },
+                                  default='roar')
+    assert answer == 'roar'
 
 
 def test_ask_multichoice_simple():

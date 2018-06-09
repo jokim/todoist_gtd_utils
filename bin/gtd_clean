@@ -273,8 +273,9 @@ def process_gtd_projects(api):
                     print("Project moved to Someday/Maybe")
 
                 def create_item():
-                    # TODO
-                    pass
+                    item = userinput.dialog_new_item(api, project=p)
+                    print("Next action created")
+                    # TODO: menu for item
 
                 def view_project():
                     p.print_presentation()

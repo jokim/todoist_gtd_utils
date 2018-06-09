@@ -12,7 +12,7 @@ import readline
 import getpass
 import requests
 
-from .utils import trim_whitespace
+from .utils import trim_whitespace, frontend_priority_to_api
 
 dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
                '(after |every )?tomorrow',
@@ -37,7 +37,79 @@ def get_input(prompt):
     return unicode(raw_input2(prompt.encode('utf-8')), 'utf-8')
 
 
-def parse_content(api, content):
+def dialog_new_item(api, name=None, project=None):
+    """Ask for all input needed to create a new item.
+
+    :type api: TodoistGTD
+
+    :type name: unicode
+    :param name: The given description of item. User gets asked if not given.
+
+    :type project: todoist.model.Project
+    :param project:
+        Sets a default project. The use case is when in a menu for a given
+        project, it makes sense to default to that project.
+
+    :rtype: todoist.model.Item
+    :return: The created item, using the Todoist API.
+
+    """
+    if not name:
+        name = get_input("Name of action: ")
+    content, parsed_input = parse_item_content(api, name)
+    # TODO: Print and colorize invalid project and label names (# and @), to
+    # highlight what looks like typos?
+
+    if parsed_input['project']:
+        project = parsed_input['project']
+
+    projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
+    project = ask_choice('Project', choices=projects, default=project['id'],
+                         category="project")
+    all_labels = dict((l['id'], unicode(l['name']).lower()) for l in
+                      api.labels.all())
+    labels = ask_multichoice('Labels', choices=all_labels,
+                             default=parsed_input['labels'], category="labels")
+    date = ask_choice('Date', choices=dateformats,
+                      default=parsed_input['date'], category="date",
+                      regex_choices=True)
+    priority = ask_choice('Priority', choices=['1', '2', '3', '4'],
+                          default=parsed_input['priority'],
+                          category="priority")
+    api_pri = frontend_priority_to_api(priority)
+
+    # TODO: handle go back in menu etc?
+
+    item = api.items.add(content + ' :email:.', priority=api_pri, indent=1,
+                         project_id=project, date_string=date, labels=labels)
+    return item
+
+
+def ask_labels(api, default):
+    """Make user choose labels.
+
+    TODO: Support creating a new label?
+
+    """
+
+
+def ask_date(api, default):
+    """Make user choose a relative or absolute date"""
+
+
+def ask_priority(api, default):
+    """Make user choose a prioritiy."""
+
+
+def ask_description(api, default):
+    """Ask user for a description, with a default value"""
+    ret = get_input("Set description [{}]: ".format(default))
+    if not ret:
+        return default
+    return ret
+
+
+def parse_item_content(api, content):
     """Get labels, projects and date out of a content string.
 
     NOT as advanced as Todoist own parser. Does for instance not support
@@ -57,14 +129,14 @@ def parse_content(api, content):
 
     """
     content, project = parse_project(api, content)
-    labelnames = set(l['name'].lower() for l in api.labels.all())
-    content, labels = parse_labels(content, labelnames)
+    content, labels = parse_labels(api, content)
     content, date = parse_date(content)
     content, priority = parse_priority(content)
 
     # Remove superfluous spaces
     content = re.sub('  +', ' ', content).strip()
-    return content, project, date, labels, priority
+    return content, {'project': project, 'date': date, 'labels': labels,
+                     'priority': priority}
 
 
 def parse_project(api, content):
@@ -72,32 +144,35 @@ def parse_project(api, content):
 
     TODO: Only support projects without space in its name, for now.
 
+    :rtype: tuple
+    :return:
+        Tuple with three elements: New content, project name and TodoistProject
+        (elns). If no project was found, the last two elements are None, and
+        the first is unmodified.
+
     """
-    project = "Inbox"
     for p in re.findall('#(\w+)', content):
         try:
-            api.get_projects_by_name(p)
+            p_obj = api.get_projects_by_name(p)
         except Exception:
+            # TODO: more granular exception
             continue
         else:
             content = content.replace('#' + p, '')
-            return content, p
-    return content, project
+            return content, p_obj
+    return content, None
 
 
-def parse_labels(content, labelnames):
-    """Return labels found, and remove from content.
-
-    :type labelnames: set
-    :param labelnames:
-        All labels' names, in lowercase. Used to only return valid labels.
-
-    """
-    labels = set(l for l in re.findall('\@(\w+)', content)
-                 if l.lower() in labelnames)
-    for l in labels:
-        content = content.replace('@' + l, '')
-    return content, labels
+def parse_labels(api, content):
+    """Return labels found, and remove from content"""
+    found_labels = []
+    for label in api.labels.all():
+        labelname = '@{}'.format(label['name'])
+        # TODO: support lowercase (need to use `re` then, to modify)
+        if labelname in content:
+            found_labels.append(label)
+            content = content.replace(labelname, '')
+    return content, found_labels
 
 
 def parse_date(content):
@@ -181,22 +256,28 @@ def _set_completer(choices):
     readline.parse_and_bind('tab: complete')
 
 
-def ask_choice(prompt, choices, default=None, category='choice',
+def ask_choice(prompt, choices, default='', category='choice',
                regex_choices=False):
-    """Prompts user to select one choice.
+    """Prompts user to select one of given choices.
+
+    Warning: Choices can't have same value.
 
     The user gets reprompted if invalid choice. If users gives blank answer,
-    the default is returned. Note that "?" is reserved, as the user then gets
+    the `default` is returned. Note that "?" is reserved, as the user then gets
     the whole list of choices.
 
-    :type prompt: str
+    :type prompt: unicode
     :param prompt: What to ask the user for. Result: `Prompt [default]: `
 
     :type choices: list, tuple or dict
     :param choices:
-        The options the user are limited to select. If a dict, the keys are what
-        the user selects from, and the value is returned - useful e.g. for
-        selecting items by name and returning its internal ID.
+        The options the user are limited to select. If a dict, the values are
+        what the user sees and selects from, while the chosen *key* is
+        returned.
+
+    :param default:
+        What to return if none is selected. If choices are a dict, the default
+        value must be a valid *key*, otherwize an error is raised.
 
     :type regex_choices: bool
     :param regex_choices:
@@ -204,47 +285,54 @@ def ask_choice(prompt, choices, default=None, category='choice',
         choice must match exactly one of the strings in `choices`.
 
     """
-    values = None
+    mapping = values = None
     if isinstance(choices, dict):
+        # Invert dict, to find keys to return later:
+        mapping = dict((v, k) for k, v in choices.iteritems())
+        values = choices.values()
+    else:
         values = choices
-        choices = choices.keys()
 
-    def get_value(input):
-        if values:
-            return values[input]
+    if default and default not in choices:
+        raise Exception("Default value '{}' missing from input"
+                        .format(default))
+
+    def get_return(input):
+        if mapping:
+            return mapping[input]
         return input
 
-    _set_completer(choices)
+    _set_completer(values)
     while True:
         raw = get_input(("{} [{}]: ".format(prompt, default)))
         if not raw:
-            return get_value(default)
+            return default
         if raw == '?':
-            present_choices(choices)
+            present_choices(values)
             continue
         raw = raw.strip()
         if regex_choices:
-            if filter(lambda x: re.search(x, raw), choices):
-                return get_value(raw)
-            print("Invalid {}, please try again (write ? for "
-                  "overview)".format(category))
+            if filter(lambda x: re.search(x, raw), values):
+                return raw
+            print("Invalid {}, please try again (? for overview)"
+                  .format(category))
         else:
-            if raw in choices:
-                return get_value(raw)
+            if raw in values:
+                return get_return(raw)
             raw = raw.lower()
-            matches = filter(lambda x: raw in x.lower(), choices)
+            matches = filter(lambda x: raw in x.lower(), values)
             if matches:
                 try:
-                    ret = ask_choice_of_list("Narrow down (CTRL+D resets):",
+                    ret = ask_choice_of_list("Narrow down (CTRL+D to cancel):",
                                              matches)
                 except EOFError:
                     # user wants to reset
-                    print("Ok, resets")
+                    print("Ok, cancel")
                     continue
                 if ret is not None:
-                    return get_value(matches[ret])
-        print("Invalid {}, please try again (return ? for "
-              "overview)".format(category))
+                    return get_return(matches[ret])
+        print("Invalid {}, please try again (? for overview)"
+              .format(category))
 
 
 def ask_multichoice(prompt, choices, default=[], category='choice',
@@ -332,14 +420,14 @@ def ask_choice_of_list(prompt, choices, default=0):
         return choice - 1
 
 
-def ask_menu(options, prompt="Choose: ", quit_char='q'):
+def ask_menu(options, prompt="Choose", quit_char='q'):
     """Simple menu loop executing given callbacks according to user input.
 
     :type options: dict
     :param options:
         What the user can choose from. The keys are the char to input for
-        selection, and the values are a two element list with an explanation and
-        a callback. Example::
+        selection, and the values are a two element list with an explanation
+        and a callback. Example::
 
             {'q': ('Quit', sys.exit), 'e': ('Edit', ask_edit), }
 
@@ -354,20 +442,20 @@ def ask_menu(options, prompt="Choose: ", quit_char='q'):
     _set_completer(options)
     while True:
         try:
-            answer = get_input(prompt)
+            answer = get_input("{} (? for menu): ".format(prompt))
         except EOFError:
-            print("Okbye")
+            print("Ok")
             return
         answer = answer.strip()
         if answer == '?':
             print("Options: ")
             for k in sorted(options):
                 print("{}: {}".format(k, options[k][0]))
-            print("q: Quit menu")
+            print("q: Quit this menu (go next)")
             print("?: Show this info")
             print('')
         elif answer == quit_char:
-            print("Okbye")
+            print("Ok")
             return
         elif answer in options:
             try:

@@ -13,7 +13,7 @@ _latest_responses = []
 def add_response(input):
     """Feed user input"""
     global _latest_responses
-    _latest_responses.append(input)
+    _latest_responses.append(unicode(input))
 
 
 def raw_input2(prompt):
@@ -137,3 +137,18 @@ def test_ask_multichoice_dict_default():
         prompt="Enter data:", choices={'abc': 12, 'def': 13, 'ghi': 14},
         default=['def', 'ghi'])
     assert answer == ['def', 'ghi']
+
+
+def test_ask_filter_regex():
+    add_response('')
+    answer = userinput.ask_filter("Age", '\d+', default='100')
+    assert answer == '100'
+    add_response('23')
+    answer = userinput.ask_filter("Age", '\d+', default='100')
+    assert answer == '23'
+    add_response('18')
+    answer = userinput.ask_filter("Age", ['\d+', '\w+'])
+    assert answer == '18'
+    add_response('abc')
+    answer = userinput.ask_filter("Age or chars", ['\d+', '\w+'], default='0')
+    assert answer == 'abc'

@@ -70,9 +70,8 @@ def dialog_new_item(api, name=None, project=None):
                       api.labels.all())
     labels = ask_multichoice('Labels', choices=all_labels,
                              default=parsed_input['labels'], category="labels")
-    date = ask_choice('Date', choices=dateformats,
-                      default=parsed_input['date'], category="date",
-                      regex_choices=True)
+    date = ask_filter('Date', dateformats, default=parsed_input['date'],
+                      category="date")
     priority = ask_choice('Priority', choices=[1, 2, 3, 4],
                           default=parsed_input['priority'],
                           category="priority")
@@ -85,22 +84,8 @@ def dialog_new_item(api, name=None, project=None):
     return item
 
 
-def ask_labels(api, default):
-    """Make user choose labels.
 
-    TODO: Support creating a new label?
-
-    """
-
-
-def ask_date(api, default):
-    """Make user choose a relative or absolute date"""
-
-
-def ask_priority(api, default):
-    """Make user choose a prioritiy."""
-
-
+#TODO: ask for this in function over?
 def ask_description(api, default):
     """Ask user for a description, with a default value"""
     ret = get_input("Set description [{}]: ".format(default))
@@ -256,8 +241,7 @@ def _set_completer(choices):
     readline.parse_and_bind('tab: complete')
 
 
-def ask_choice(prompt, choices, default='', category='choice',
-               regex_choices=False):
+def ask_choice(prompt, choices, default='', category='choice'):
     """Prompts user to select one of given choices.
 
     Warning: Choices can't have same value.
@@ -275,14 +259,11 @@ def ask_choice(prompt, choices, default='', category='choice',
         what the user sees and selects from, while the chosen *key* is
         returned.
 
+        TODO: Behave the same way for dicts and list, i.e. return key or index.
+
     :param default:
         What to return if none is selected. If choices are a dict, the default
         value must be a valid *key*, otherwize an error is raised.
-
-    :type regex_choices: bool
-    :param regex_choices:
-        If set to True the choices are regexes to be matched. False means the
-        choice must match exactly one of the strings in `choices`.
 
     """
     mapping = values = None
@@ -314,27 +295,52 @@ def ask_choice(prompt, choices, default='', category='choice',
             present_choices(values)
             continue
         raw = raw.strip()
-        if regex_choices:
-            if filter(lambda x: re.search(x, raw), values):
-                return raw
-            print("Invalid {}, please try again (? for overview)"
-                  .format(category))
-        else:
-            if raw in values:
-                return get_return(raw)
-            raw = raw.lower()
-            matches = filter(lambda x: raw in x.lower(), values)
-            if matches:
-                try:
-                    ret = ask_choice_of_list("Narrow down (CTRL+D to cancel):",
-                                             matches)
-                except EOFError:
-                    # user wants to reset
-                    print("Ok, cancel")
-                    continue
-                if ret is not None:
-                    return get_return(matches[ret])
+        if raw in values:
+            return get_return(raw)
+        raw = raw.lower()
+        matches = filter(lambda x: raw in x.lower(), values)
+        if matches:
+            try:
+                ret = ask_choice_of_list("Narrow down (CTRL+D to cancel):",
+                                         matches)
+            except EOFError:
+                # user wants to reset
+                print("Ok, cancel")
+                continue
+            if ret is not None:
+                return get_return(matches[ret])
         print("Invalid {}, please try again (? for overview)"
+              .format(category))
+
+def ask_filter(prompt, regex_choices, default=None, category='choice'):
+    """Ask for input that must match one of the given regular expressions.
+
+    :type regex_choices: list of unicode
+    :param regex_choices: Regex expressions to match input with.
+
+    :rtype: unicode
+    :return:
+        The given input that matches at least one of the regular expresssions.
+
+    """
+    if not isinstance(regex_choices, (list, tuple)):
+        regex_choices = [regex_choices]
+
+    while True:
+        raw = get_input("{} [{}]: ".format(prompt, default))
+        if not raw:
+            return default
+        if raw == '?':
+            print("Must match one of following regexes:")
+            for r in regex_choices:
+                print("- {}".format(r))
+            print('')
+            continue
+        raw = raw.strip()
+        for r in regex_choices:
+            if re.search(r, raw):
+                return raw
+        print("Invalid {}, please try again (? for help)"
               .format(category))
 
 
@@ -358,13 +364,12 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
 
     """
     mapping = None
-    default_value = default
 
     if isinstance(choices, dict):
         # Invert dict, to find keys to return later:
         mapping = dict((unicode(v), k) for k, v in choices.iteritems())
         values = map(unicode, choices.values())
-        default_values = [unicode(choices.get(d)) for d in default]
+        default_values = map(unicode, map(choices.get, default))
     else:
         values = choices
         default_values = default
@@ -389,8 +394,6 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
             continue
         raw = raw.strip()
         selections = raw.split(separator)
-        print("Availbale values: {}".format(values))
-        print("Input separated: {}".format(selections))
         invalid_selections = filter(lambda x: x not in values, selections)
         if not invalid_selections:
             return get_return(selections)

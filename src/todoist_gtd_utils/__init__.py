@@ -201,6 +201,11 @@ class TodoistGTD(todoist.api.TodoistAPI):
         files = {'file': filedata}
         return self._post('uploads/add', data=data, files=files)
 
+    def get_somedaymaybe(self):
+        """Get list with all Someday/Maybe projects."""
+        pr_names = self.config.get_commalist('gtd', 'someday-projects')
+        return map(self.get_projects_by_name, pr_names)
+
 
 class HelperProject(todoist.models.Project):
     """Helper methods for project"""
@@ -217,8 +222,8 @@ class HelperProject(todoist.models.Project):
         indent = self['indent']
         if not indent:
             return None
-        projs = self.api.projects.all(lambda x: x['item_order'] < order and
-                                                x['indent'] < indent)
+        projs = self.api.projects.all(lambda x: (x['item_order'] < order and
+                                                 x['indent'] < indent))
         # Projects are ordered by item_order, so the first project that match
         # the criterias, going backwards, should be self's parent.
         return projs[-1]
@@ -402,6 +407,7 @@ class GTDItem(todoist.models.Item):
         # TODO: Add more sanity checks here, since todoist doesn't seem to
         # check much. Some of my test items disappeared, but not confirmed.
         self.move(new_parent)
+
 
 class HumanItem(GTDItem):
     """Simpler representation of a todoist item (task)."""

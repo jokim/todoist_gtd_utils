@@ -19,9 +19,6 @@ from todoist_gtd_utils import userinput
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 
-# TODO: Move variables to config:
-somedaymaybe_project_name = 'Someday Maybe'
-
 
 def _get_child_project_ids(api, project, include_self=True):
     """Return a list of project IDs for the children of given project."""
@@ -31,7 +28,7 @@ def _get_child_project_ids(api, project, include_self=True):
     return ret
 
 
-def _get_items(api, project_ids):
+def _get_items(api, project_ids, recursive=False):
     """Return a list of IDs for all items in given projects IDs."""
     if not isinstance(project_ids, (list, tuple)):
         project_ids = [project_ids]
@@ -77,16 +74,16 @@ def ask_about_inactive_project(api, item, project=None):
     else:
         print("Inactive item with a due date:")
     print(item)
-    choice = userinput.ask_choice("What to do?",
-                                  ('activate', 'ignore', 'delay'),
+    choices = ('activate', 'ignore', 'delay')
+    choice = userinput.ask_choice("What to do?", choices=choices,
                                   default='activate')
-    if choice == 'activate':
+    if choice == 0:
         if len(targetprojects) > 1:
             move = userinput.ask_choice("Activate in what GTD project?",
                                         targetprojects,
                                         default=targetprojects[0],
                                         category='project')
-            targetprojects = [move]
+            targetprojects = [targetprojects[move]]
         new_parent = api.get_projects_by_name(targetprojects[0])
         if project:
             # Move the whole project
@@ -97,10 +94,9 @@ def ask_about_inactive_project(api, item, project=None):
 
         api.force_commit()
         print("Project moved to GTD-project: {}".format(new_parent['name']))
-    elif choice == 'delay':
-        date = userinput.ask_choice("For how long?", userinput.dateformats,
-                                    default='in 7 days', category='date',
-                                    regex_choices=True)
+    elif choice == 2:
+        date = userinput.ask_filter("For how long?", userinput.dateformats,
+                                    default='in 7 days', category='date')
         item.update(date_string=date)
         api.force_commit()
         print("Task delayed")
@@ -117,24 +113,19 @@ def process_active_projects_in_someday(api):
 
     """
     grace_days = api.config.getint('gtd', 'activate-before-due-date')
-    someday_proj = api.get_projects_by_name(somedaymaybe_project_name)
-    items = _get_items(api, [someday_proj['id']])
-    for i in items:
-        if i.is_due(grace_days):
-            try:
-                ask_about_inactive_project(api, i)
-            except EOFError:
-                continue
-
-    child_pr = _get_child_project_ids(api, someday_proj, include_self=False)
-    items = _get_items(api, child_pr)
-    for i in items:
-        if i.is_due(grace_days):
-            proj = api.projects.get_by_id(i['project_id'])
-            try:
-                ask_about_inactive_project(api, i, proj)
-            except EOFError:
-                continue
+    someday_projects = api.get_somedaymaybe()
+    someday_ids = [p['id'] for p in someday_projects]
+    for someday_proj in someday_projects:
+        items = someday_proj.get_child_items(include_child_projects=True)
+        for i in items:
+            if i.is_due(grace_days):
+                proj = None
+                if i['project_id'] not in someday_ids:
+                    proj = api.projects.get_by_id(i['project_id'])
+                try:
+                    ask_about_inactive_project(api, i, proj)
+                except EOFError:
+                    continue
 
 
 def remove_labels_in_someday(api, args):
@@ -143,14 +134,16 @@ def remove_labels_in_someday(api, args):
     Remove label, and add it as a comment, so that it's possible to restore.
 
     """
-    print("Remove labels in {}…".format(somedaymaybe_project_name))
+    print("Remove labels in {}…".format(
+        api.config.get_commalist('gtd', 'someday-projects')))
     ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
     ignore_l_ids = set(api.get_label_id(ignore_labels, raise_on_missing=False))
     print("Ignore labels: {}".format(', '.join(ignore_labels)))
 
-    proj = api.get_projects_by_name(somedaymaybe_project_name)
-    child_pr = _get_child_project_ids(api, proj)
-    items = _get_items(api, child_pr)
+    items = []
+    for proj in api.get_somedaymaybe():
+        child_pr = _get_child_project_ids(api, proj)
+        items.extend(_get_items(api, child_pr))
     print("Processing {} items…".format(len(items)))
 
     def add_labels(content, labels):
@@ -181,7 +174,8 @@ def remove_labels_in_someday(api, args):
             api.force_commit()
     api.force_commit()
     api.sync()
-    print("Done removing labels in {}".format(somedaymaybe_project_name))
+    print("Done removing labels in {}".format(
+        api.config.get_commalist('gtd', 'someday-projects')))
 
 
 def restore_labels_in_projects(api):

@@ -101,7 +101,7 @@ if __name__ == '__main__':
     except EOFError:
         sys.exit(0)
     goal = None
-    if what == 'project':
+    if what == 0:
         goal = ui.get_input("Project end goal (project name)? ")
     next = ui.get_input("What's the Next action? ")
 

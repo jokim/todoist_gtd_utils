@@ -64,7 +64,7 @@ def dialog_new_item(api, name=None, project=None):
         project = parsed_input['project']
 
     projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
-    project = ask_choice('Project', choices=projects, default=project['id'],
+    project_id = ask_choice('Project', choices=projects, default=project['id'],
                          category="project")
     all_labels = dict((l['id'], unicode(l['name']).lower()) for l in
                       api.labels.all())
@@ -72,15 +72,17 @@ def dialog_new_item(api, name=None, project=None):
                              default=parsed_input['labels'], category="labels")
     date = ask_filter('Date', dateformats, default=parsed_input['date'],
                       category="date")
-    priority = ask_choice('Priority', choices=[1, 2, 3, 4],
-                          default=parsed_input['priority'],
+    choices = [1, 2, 3, 4]
+    priority = ask_choice('Priority', choices=choices,
+                          default=parsed_input['priority'] - 1,
                           category="priority")
+    priority += 1
     api_pri = frontend_priority_to_api(priority)
 
     # TODO: handle go back in menu etc?
 
     item = api.items.add(content + ' :email:.', priority=api_pri, indent=1,
-                         project_id=project, date_string=date, labels=labels)
+                         project_id=project_id, date_string=date, labels=labels)
     return item
 
 

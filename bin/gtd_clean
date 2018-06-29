@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 
 from todoist_gtd_utils import userinput
 from todoist_gtd_utils import utils
+from todoist_gtd_utils import menus
 from todoist_gtd_utils import TodoistGTD
 
 
@@ -254,35 +255,7 @@ def process_gtd_projects(api):
             if not filter(lambda t: t.is_actionable(), tasks):
                 print("No tasks for project «{}»".format(p['name']))
 
-                def archive_project():
-                    p.archive()
-                    print("Project archived")
-
-                def delete_project():
-                    p.delete()
-                    print("Project deleted")
-
-                def postpone_project():
-                    p.postpone_project()
-                    print("Project moved to Someday/Maybe")
-
-                def create_item():
-                    item = userinput.dialog_new_item(api, project=p)
-                    print("Next action created")
-                    # TODO: menu for item
-
-                def view_project():
-                    p.print_presentation()
-
-                userinput.ask_menu(
-                    {'d': ('Set project to done (archive)', archive_project),
-                     'v': ('View project', view_project),
-                     'm': ('Move project to Someday/Maybe', postpone_project),
-                     'c': ('Create next action', create_item),
-                     'D': ('Delete project', delete_project),
-                     },
-                    prompt="What to do?")
-                api.force_commit()
+                menus.menu_project(api, p)
 
 
 if __name__ == '__main__':

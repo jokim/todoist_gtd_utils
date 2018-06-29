@@ -34,29 +34,13 @@ import todoist_gtd_utils.mail
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import TodoistGTD
 from todoist_gtd_utils import userinput as ui
+from todoist_gtd_utils import menus
 
 
 def signal_handler(signal, frame):
     """Prettier abort"""
     print("\nQuit, not commit")
     sys.exit(0)
-
-
-def gather_input(content, api, args, project=None):
-    """Ask user for info about the new item."""
-    content, proj, date, labels, priority = ui.parse_content(api, content)
-    print()
-    # TODO: colorize invalid project and label names (# and @), to highlight
-    # what looks like typos
-    print(content)
-    print()
-
-    if not project:
-        project = ask_project(api, proj)
-    labels = ask_labels(api, labels)
-    date = ask_date(api, date)
-    priority = ask_priority(api, priority)
-    return content, project, date, labels, priority
 
 
 def create_api(args):
@@ -101,6 +85,7 @@ if __name__ == '__main__':
     except EOFError:
         sys.exit(0)
     goal = None
+    new_pr = None
     if what == 0:
         goal = ui.get_input("Project end goal (project name)? ")
     next = ui.get_input("What's the Next action? ")
@@ -121,28 +106,23 @@ if __name__ == '__main__':
         pos = sub_pr[pos]['item_order']
         new_pr = api.projects.add(goal, indent=parent['indent'] + 1,
                                   color=parent['color'], item_order=pos)
-        i = api.items.add('* Original request', project_id=new_pr['id'])
-        api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
-                                                     'Message-Id', '_Reply-To',
-                                                     '*Subject', '_Sender',
-                                                     color=False))
+        item = api.items.add('* Original request', project_id=new_pr['id'])
+        api.notes.add(item['id'], mail.get_presentation('Date', '*From', 'To',
+                                                        'Message-Id',
+                                                        '_Reply-To',
+                                                        '*Subject', '_Sender',
+                                                        color=False))
         api.force_commit()
         goal = new_pr['id']
         print("Project created")
 
-    next, project, date, labels, priority = gather_input(next, api, args,
-                                                         project=goal)
-    print("Project: {}".format(project))
-    api_pri = utils.frontend_priority_to_api(priority)
-
-    i = api.items.add(next + ' :email:.', priority=api_pri, indent=1,
-                      project_id=project, date_string=date, labels=labels)
-    cprint("\nCreated new item:\n{}\n".format(i), attrs=['bold'])
+    item = ui.dialog_new_item(api, name=next, project=new_pr)
+    cprint("\nCreated new item:\n{}\n".format(item), attrs=['bold'])
     api.force_commit()
-    api.notes.add(i['id'], mail.get_presentation('Date', '*From', 'To',
-                                                 'Message-Id', '_Reply-To',
-                                                 '*Subject', '_Sender',
-                                                 color=False))
+    api.notes.add(item['id'], mail.get_presentation('Date', '*From', 'To',
+                                                    'Message-Id', '_Reply-To',
+                                                    '*Subject', '_Sender',
+                                                    color=False))
     # Add file attachments, if given in mail
     for a_type, a_name, a_content in mail.get_attachments():
         print("File: {} ({}) ({} bytes)".format(a_name, a_type,
@@ -152,75 +132,9 @@ if __name__ == '__main__':
             if resp['upload_state'] != 'completed':
                 print("Upload status of '{}': {}".format(resp['upload_state'],
                                                          resp['file_name']))
-            api.notes.add(i['id'], 'Mail attachment: {}'.format(a_name),
+            api.notes.add(item['id'], 'Mail attachment: {}'.format(a_name),
                           file_attachment=resp)
 
     api.force_commit()
     api.sync()
-
-    # For post-edits by user:
-    def delete_item():
-        i.delete()
-        api.force_commit()
-        print("Item deleted. Most commands now doesn't work.")
-
-    def set_project():
-        p = ask_project(api, i.get_project()['name'])
-        i.move_to_project(p)
-        api.force_commit()
-        print("Project updated")
-
-    def set_labels():
-        l = ask_labels(api, api.get_label_name(i['labels']))
-        i.update(labels=l)
-        api.force_commit()
-        print("Labels updated")
-
-    def set_date():
-        d = ask_date(api, i['date_string'])
-        i.update(date_string=d)
-        api.force_commit()
-        print("Date updated")
-
-    def set_priority():
-        p = ask_priority(api, i['priority'])
-        i.update(priority=p)
-        api.force_commit()
-        print("Priority updated")
-
-    def set_description():
-        c = ask_description(api, i['content'])
-        i.update(content=c)
-        api.force_commit()
-        print("Description updated")
-
-    def view_item():
-        # TODO: User item.get_presentation() instead? Move missing parts there,
-        # if needed
-        cprint(i, attrs=['bold'])
-        print('')
-        for n, note in enumerate(api.notes.all(lambda x: x['item_id'] ==
-                                               i['id'])):
-            cprint("Note {}, from {}:".format(n + 1, note.data.get('posted')),
-                   on_color='on_grey', color='blue')
-            cprint(utils.trim_too_long(note.data.get('content'), 2000),
-                   attrs=['dark'])
-            print('')
-
-    def edit_attachments():
-        # TODO
-        # 1. list attachments
-        # 2. choose an attachment
-        # 3. start editor to edit it
-        # 4. if saved, update in todoist
-        pass
-
-    ui.ask_menu({'D': ('Delete item', delete_item),
-                 'l': ('Edit labels', set_labels),
-                 'd': ('Edit date', set_date),
-                 'e': ('Edit description', set_description),
-                 'p': ('Set project', set_project),
-                 'v': ('View task', view_item),
-                 'r': ('Set priority', set_priority),
-                 'a': ('Edit attachments', edit_attachments),
-                 }, prompt="Edit more? (? for options) ")
+    menus.menu_item(api, item)

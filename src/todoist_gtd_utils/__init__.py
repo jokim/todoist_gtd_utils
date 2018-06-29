@@ -18,10 +18,11 @@ TODO:
 from datetime import datetime, timedelta
 import io
 
+from termcolor import cprint, colored
+
 import todoist
 from todoist.api import SyncError
 # TODO: move to utils, or somewhere else?
-from termcolor import colored
 
 from . import config
 from . import utils
@@ -436,6 +437,7 @@ class HumanItem(GTDItem):
         """
         max = userinput.get_terminal_size()[1]
         ret = []
+        # TODO: make content bold
         ret.append(utils.trim_too_long(self.data.get('content'), max))
         sub = []
         if self.data.get('date_string'):
@@ -454,6 +456,20 @@ class HumanItem(GTDItem):
                 max - len(' '.join(sub))), 'blue'))
         ret.append(' '.join(sub))
         return '\n'.join(ret)
+
+    def print_note_preview(self):
+        """Get details about the item, in a presentable manner.
+
+        Uses a few lines, and colors!
+
+        """
+        for n, note in enumerate(self.api.notes.all(lambda x: x['item_id'] ==
+                                                    self['id'])):
+            cprint("Note {}, from {}:".format(n + 1, note.data.get('posted')),
+                   on_color='on_grey', color='blue')
+            cprint(utils.trim_too_long(note.data.get('content'), 2000),
+                   attrs=['dark'])
+            print('')
 
     def get_short_preview(self):
         """Get one line with details of the item"""

@@ -63,25 +63,21 @@ def dialog_new_item(api, name=None, project=None):
     if parsed_input['project']:
         project = parsed_input['project']
 
+    project_id = None
+    if project:
+        project_id = project['id']
+
     projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
-    project_id = ask_choice('Project', choices=projects, default=project['id'],
+    project_id = ask_choice('Project', choices=projects, default=project_id,
                             category="project")
-    all_labels = dict((l['id'], unicode(l['name']).lower()) for l in
-                      api.labels.all())
-    labels = ask_multichoice('Labels', choices=all_labels,
-                             default=parsed_input['labels'], category="labels")
+    labels = ask_labels(api, default=parsed_input['labels'])
     date = ask_filter('Date', dateformats, default=parsed_input['date'],
                       category="date")
-    choices = [1, 2, 3, 4]
-    priority = ask_choice('Priority', choices=choices,
-                          default=parsed_input['priority'] - 1,
-                          category="priority")
-    priority += 1
-    api_pri = frontend_priority_to_api(priority)
+    priority = ask_priority(api, parsed_input['priority'] - 1)
 
     # TODO: handle go back in menu etc?
 
-    item = api.items.add(content + ' :email:.', priority=api_pri, indent=1,
+    item = api.items.add(content + ' :email:.', priority=priority, indent=1,
                          project_id=project_id, date_string=date,
                          labels=labels)
     return item
@@ -94,6 +90,26 @@ def ask_description(api, default):
     if not ret:
         return default
     return ret
+
+
+def ask_date(api, default):
+    """Ask user for a valid date"""
+    return ask_filter('Date', dateformats, default=default, category="date")
+
+
+def ask_priority(api, default):
+    choices = [1, 2, 3, 4]
+    priority = ask_choice('Priority', choices=choices, default=default,
+                          category="priority")
+    priority = choices[priority]
+    return frontend_priority_to_api(priority)
+
+
+def ask_labels(api, default=None):
+    all_labels = dict((l['id'], unicode(l['name']).lower()) for l in
+                      api.labels.all())
+    return ask_multichoice('Labels', choices=all_labels, default=default,
+                           category="labels")
 
 
 def parse_item_content(api, content):
@@ -283,7 +299,11 @@ def ask_choice(prompt, choices, default=None, category='choice',
 
     _set_completer(mapping)
     while True:
-        raw = get_input(("{} [{}]: ".format(prompt, default_value)))
+        if default_value:
+            prompt_str = "{} [{}]: ".format(prompt, default_value)
+        else:
+            prompt_str = "{} [? for list]: ".format(prompt)
+        raw = get_input(prompt_str)
         if not raw:
             return default
         if raw == '?':
@@ -322,8 +342,12 @@ def ask_filter(prompt, regex_choices, default=None, category='choice'):
     if not isinstance(regex_choices, (list, tuple)):
         regex_choices = [regex_choices]
 
+    prompt_str = '{}: '.format(prompt)
+    if default:
+        prompt_str = "{} [{}]: ".format(prompt, default)
+
     while True:
-        raw = get_input("{} [{}]: ".format(prompt, default))
+        raw = get_input(prompt_str)
         if not raw:
             return default
         if raw == '?':

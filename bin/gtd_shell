@@ -17,6 +17,7 @@ import code
 
 from todoist_gtd_utils import userinput
 from todoist_gtd_utils import utils
+from todoist_gtd_utils import menus
 from todoist_gtd_utils import TodoistGTD
 
 if __name__ == '__main__':

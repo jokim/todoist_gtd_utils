@@ -65,7 +65,7 @@ def dialog_new_item(api, name=None, project=None):
 
     projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
     project_id = ask_choice('Project', choices=projects, default=project['id'],
-                         category="project")
+                            category="project")
     all_labels = dict((l['id'], unicode(l['name']).lower()) for l in
                       api.labels.all())
     labels = ask_multichoice('Labels', choices=all_labels,
@@ -82,12 +82,12 @@ def dialog_new_item(api, name=None, project=None):
     # TODO: handle go back in menu etc?
 
     item = api.items.add(content + ' :email:.', priority=api_pri, indent=1,
-                         project_id=project_id, date_string=date, labels=labels)
+                         project_id=project_id, date_string=date,
+                         labels=labels)
     return item
 
 
-
-#TODO: ask for this in function over?
+# TODO: ask for this in function over?
 def ask_description(api, default):
     """Ask user for a description, with a default value"""
     ret = get_input("Set description [{}]: ".format(default))
@@ -278,6 +278,9 @@ def ask_choice(prompt, choices, default=None, category='choice',
         choices = dict(enumerate(choices))
     mapping = dict((unicode(v), k) for k, v in choices.iteritems())
 
+    if not default_value:
+        default_value = default
+
     _set_completer(mapping)
     while True:
         raw = get_input(("{} [{}]: ".format(prompt, default_value)))
@@ -303,6 +306,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
                 return mapping[matches[ret]]
         print("Invalid {}, please try again (? for overview)"
               .format(category))
+
 
 def ask_filter(prompt, regex_choices, default=None, category='choice'):
     """Ask for input that must match one of the given regular expressions.

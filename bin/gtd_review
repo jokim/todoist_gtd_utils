@@ -1,0 +1,296 @@
+#!/bin/env python
+# -*- encoding: utf-8 -*-
+
+""" Review GTD data in Todoist, where needed.
+
+Highlights projects and items that matches certain criteria, to force a
+decision from the user. Criteria, for now:
+
+- Projects without any action
+
+- Hibernated projects and items with an upcoming due date
+
+Some cleanup is also included:
+
+- Labels are archived for hibernated items, and gets unarchived when project
+  gets reactivated.
+
+- Unnecessary white space is removed.
+
+"""
+
+from __future__ import print_function
+from __future__ import unicode_literals
+
+from todoist_gtd_utils import userinput
+from todoist_gtd_utils import utils
+from todoist_gtd_utils import menus
+from todoist_gtd_utils import TodoistGTD
+
+
+def _get_child_project_ids(api, project, include_self=True):
+    """Return a list of project IDs for the children of given project."""
+    ret = set(p['id'] for p in project.get_child_projects())
+    if include_self:
+        ret.add(project['id'])
+    return ret
+
+
+def _get_items(api, project_ids, recursive=False):
+    """Return a list of IDs for all items in given projects IDs."""
+    if not isinstance(project_ids, (list, tuple)):
+        project_ids = [project_ids]
+    return api.items.all(lambda x: x['project_id'] in project_ids)
+
+
+def _cleanup_whitespace(api):
+    """Remove a few whitespaces where unnecessary."""
+    def has_whitespace(element, x):
+        return x[element].endswith('\n') or x[element].startswith('\n')
+
+    for p in api.projects.all(lambda x: has_whitespace('name', x)):
+        print("Remove whitespace from: {}".format(p))
+        p.update(name=p['name'].strip())
+    for i in api.items.all(lambda x: has_whitespace('content', x)):
+        print("Remove whitespace from: {}".format(i))
+        i.update(content=i['content'].strip())
+
+
+def cleanup_fields(api):
+    """Clean up a few technical details."""
+    _cleanup_whitespace(api)
+
+
+def ask_about_inactive_project(api, item, project=None):
+    """Ask what to do with a given, inactive project or item.
+
+    :type item: GTDItem
+    :param item:
+        The item that is affected and/or affecting, and might be done something
+        with.
+
+    :type project: HelperProject
+    :param project:
+        What project to move. If set to None, only the item is affected, e.g.
+        moved.
+
+    """
+    targetprojects = api.config.get_commalist('gtd', 'target-projects')
+    if project:
+        print("Inactive project «{}» has a task with due date:"
+              .format(project['name']))
+    else:
+        print("Inactive item with a due date:")
+    print(item)
+    choices = ('activate', 'ignore', 'delay', 'edit')
+    choice = userinput.ask_choice("What to do?", choices=choices,
+                                  default=0, default_value='activate')
+    if choices[choice] == 'activate':
+        if len(targetprojects) > 1:
+            move = userinput.ask_choice("Activate in what GTD project?",
+                                        targetprojects,
+                                        default=targetprojects[0],
+                                        category='project')
+            targetprojects = [targetprojects[move]]
+        new_parent = api.get_projects_by_name(targetprojects[0])
+        if project:
+            # Move the whole project
+            project.activate(new_parent)
+        else:
+            # Move only item
+            item.move_to_project(new_parent['id'])
+
+        api.force_commit()
+        print("Project moved to GTD-project: {}".format(new_parent['name']))
+    elif choices[choice] == 'delay':
+        date = userinput.ask_filter("For how long?", userinput.dateformats,
+                                    default='in 7 days', category='date')
+        item.update(date_string=date)
+        api.force_commit()
+        print("Task delayed")
+    elif choices[choice] == 'edit':
+        if project:
+            menus.menu_project(api, project)
+        else:
+            menus.menu_item(api, item)
+    else:
+        print("Ok. Ignore it, for now…")
+    print()
+
+
+def process_active_projects_in_someday(api):
+    """Go through Someday for "active" projects.
+
+    If a project or item has a due date that is for today or expired, the user
+    is asked to activate the project.
+
+    """
+    grace_days = api.config.getint('gtd', 'activate-before-due-date')
+    someday_projects = api.get_somedaymaybe()
+    someday_ids = [p['id'] for p in someday_projects]
+    for someday_proj in someday_projects:
+        items = someday_proj.get_child_items(include_child_projects=True)
+        for i in items:
+            if i.is_due(grace_days):
+                proj = None
+                if i['project_id'] not in someday_ids:
+                    proj = api.projects.get_by_id(i['project_id'])
+                try:
+                    ask_about_inactive_project(api, i, proj)
+                except EOFError:
+                    continue
+
+
+def remove_labels_in_someday(api, args):
+    """Archive labels from items in Someday/Maybe.
+
+    Remove label, and add it as a comment, so that it's possible to restore.
+
+    """
+    print("Remove labels in {}…".format(
+        api.config.get_commalist('gtd', 'someday-projects')))
+    ignore_labels = api.config.get_commalist('cleanup', 'ignore-labels')
+    ignore_l_ids = set(api.get_label_id(ignore_labels, raise_on_missing=False))
+    print("Ignore labels: {}".format(', '.join(ignore_labels)))
+
+    items = []
+    for proj in api.get_somedaymaybe():
+        child_pr = _get_child_project_ids(api, proj)
+        items.extend(_get_items(api, child_pr))
+    print("Processing {} items…".format(len(items)))
+
+    def add_labels(content, labels):
+        adds = set()
+        for l in labels:
+            l = '__' + l
+            if l not in content:
+                adds.add(l)
+        return content + ' '.join(adds)
+
+    for i in items:
+        labels_to_remove = set(i['labels']) - ignore_l_ids
+        if not labels_to_remove:
+            continue
+        print("\n{}".format(i.get_presentation()))
+        labelnames = api.get_label_name(labels_to_remove)
+        if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
+                ', '.join(labelnames)), args):
+            # TODO: add support for editing the labels and not just y/n?
+            # TODO: And other actions, like activating project, deleting item
+            # etc
+            remaining_l = set(i['labels']) - labels_to_remove
+            for l in labels_to_remove:
+                api.notes.add(i['id'], "gtd_utils:removed_label:{}:{}"
+                              .format(l, api.get_label_name(l)))
+            i.update(labels=list(remaining_l), content=add_labels(i['content'],
+                                                                  labelnames))
+            api.force_commit()
+    api.force_commit()
+    api.sync()
+    print("Done removing labels in {}".format(
+        api.config.get_commalist('gtd', 'someday-projects')))
+
+
+def restore_labels_in_projects(api):
+    """Restore archived labels from reactivated items"""
+    # TODO: Add target projects to config!
+    target_projects = ['Personal', 'Work']
+    print("Restore labels from {}…".format(', '.join(target_projects)))
+    item_ids = set()
+    for p in target_projects:
+        proj = api.get_projects_by_name(p)
+        child_pr = _get_child_project_ids(api, proj)
+        print("Processing {} projects from {}…".format(len(child_pr), p))
+        items = _get_items(api, child_pr)
+        print("Processing {} items from {}…".format(len(items), p))
+        item_ids.update(i['id'] for i in items)
+
+    def get_match(note):
+        if (note.startswith('gtd_utils:removed_l') or
+                note.startswith('gtd_clean:removed_l')):
+            return True
+        return False
+
+    def remove_labels(content, labels):
+        for l in labels:
+            content = content.replace('__' + l, '')
+        return content.strip()
+
+    notes = api.notes.all(lambda x:
+                          x['item_id'] in item_ids and
+                          get_match(x['content']))
+    print("Found {} removed labels to restore".format(len(notes)))
+
+    targets = {}
+    for n in notes:
+        targets.setdefault(n['item_id'], []).append(n)
+    for i, notes in targets.iteritems():
+        item = api.items.get_by_id(i)
+        labels = []
+        for n in notes:
+            data = n['content'].split(':')
+            l = data[2]
+            if l in item['labels']:
+                continue
+            if not api.labels.get(l):
+                print(item)
+                print("WARN: Label {} doesn't exist. Data: {}".format(l, data))
+                continue
+            labels.append(l)
+        print("Restore labels for {}: {}".format(
+            utils.trim_too_long(item['content']),
+            ', '.join(api.get_label_name(labels))))
+
+        item.update(labels=item['labels'] + labels,
+                    content=remove_labels(item['content'],
+                                          api.get_label_name(labels)))
+        api.force_commit()
+        # TODO: Verify if labels have been updated first!
+        for n in notes:
+            n.delete()
+        api.force_commit()
+
+
+def process_gtd_projects(api):
+    """Review each active project according to GTD.
+
+    What is automatically checked, for now:
+
+    # Each project should have a next action
+
+    """
+    targetprojects = api.config.get_commalist('gtd', 'target-projects')
+    for t in targetprojects:
+        parent = api.get_projects_by_name(t)
+        for p in parent.get_child_projects():
+            tasks = p.get_child_items()
+            if not filter(lambda t: t.is_actionable(), tasks):
+                print("No tasks for project «{}»".format(p['name']))
+
+                menus.menu_project(api, p)
+
+
+if __name__ == '__main__':
+    p = userinput.get_argparser(
+            description="Clean up in Todoist, for GTD setup")
+    args = p.parse_args()
+    api = TodoistGTD(configfiles=args.configfile, token=args.token)
+    if not api.is_authenticated():
+        userinput.login_dialog(api)
+    print("Full sync with Todoist…")
+    api.fullsync()
+
+    cleanup_fields(api)
+    api.sync()
+    print("\n== Prosessing Someday/Maybe ==")
+    print("Any projects/items that should have been active?")
+    process_active_projects_in_someday(api)
+    print("Any labels that should be disabled?")
+    remove_labels_in_someday(api, args)
+
+    print("\n== Prosessing active projects ==")
+    print("Any labels that should be enabled?")
+    restore_labels_in_projects(api)
+    print("\n== GTD review ==")
+    process_gtd_projects(api)
+    print("sync done")

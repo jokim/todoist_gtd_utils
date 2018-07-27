@@ -54,7 +54,7 @@ setup(
     #py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     install_requires=list(get_requirements('requirements.txt')),
     scripts=[
-        'bin/gtd_clean',
+        'bin/gtd_review',
         'bin/gtd_utils',
         'bin/gtd_shell',
         'bin/todoist_add_mail_item',

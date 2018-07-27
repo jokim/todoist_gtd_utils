@@ -257,6 +257,8 @@ class HelperProject(todoist.models.Project):
 
         The order in sub project list is, for now, set to the middle.
 
+        :type new_parent: todoist.models.Project
+
         """
         # Find the right order
         children = new_parent.get_child_projects()
@@ -360,6 +362,9 @@ class GTDProject(HelperProject):
         if not parent_project:
             parent_project = self.config.get_commalist('gtd',
                                                        'target-projects')[0]
+            parent_project = self.api.get_projects_by_name(parent_project)[0]
+        if isinstance(parent_project, int):
+            parent_project = self.get_by_id(parent_project)
         self._move_project(parent_project)
         # TODO: more to do?
 

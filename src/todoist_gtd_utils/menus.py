@@ -32,6 +32,21 @@ def menu_project(api, project, extra=None):
         project.delete()
         print("Project deleted")
 
+    def activate_project():
+        targetprojects = api.config.get_commalist('gtd', 'target-projects')
+        project_id = None
+        if len(targetprojects) == 1:
+            project_id = api.get_projects_by_name(targetprojects[0])
+        elif len(targetprojects) > 1:
+            project_id = userinput.ask_choice('Where to?',
+                                              choices=targetprojects,
+                                              default=0, category="project")
+        else:
+            print("No target projects defined. Where to move?")
+            project_id = userinput.ask_project(api)
+        project.activate(project_id)
+        print("Project activated")
+
     def hibernate_project():
         project.hibernate()
         print("Project moved to Someday/Maybe")
@@ -52,12 +67,13 @@ def menu_project(api, project, extra=None):
             return
 
         try:
-            menu_project(api, project.get_parent_project())
+            menu_project(api, parent)
         except EOFError:
             print("Going back to project {}".format(project))
 
     userinput.ask_menu(
         {'d': ('Set project to done (archive)', archive_project),
+         'a': ('Activate project', activate_project),
          'v': ('View project', view_project),
          'h': ('Hibernate project (Someday/Maybe)', hibernate_project),
          'Gp': ('Go to parent project', go_parent),

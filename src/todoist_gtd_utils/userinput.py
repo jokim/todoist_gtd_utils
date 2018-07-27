@@ -66,10 +66,8 @@ def dialog_new_item(api, name=None, project=None):
     project_id = None
     if project:
         project_id = project['id']
+    project_id = ask_project(api, default=project_id)
 
-    projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
-    project_id = ask_choice('Project', choices=projects, default=project_id,
-                            category="project")
     labels = ask_labels(api, default=parsed_input['labels'])
     date = ask_filter('Date', dateformats, default=parsed_input['date'],
                       category="date")
@@ -90,6 +88,13 @@ def ask_description(api, default):
     if not ret:
         return default
     return ret
+
+
+def ask_project(api, default=None):
+    """Ask user for a valid project"""
+    projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
+    project_id = ask_choice('Project', choices=projects, default=default,
+                            category="project")
 
 
 def ask_date(api, default):

@@ -90,7 +90,7 @@ def ask_about_inactive_project(api, item, project=None):
         new_parent = api.get_projects_by_name(targetprojects[0])
         if project:
             # Move the whole project
-            project.activate_project(new_parent)
+            project.activate(new_parent)
         else:
             # Move only item
             item.move_to_project(new_parent['id'])

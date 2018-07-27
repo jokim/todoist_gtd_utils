@@ -347,7 +347,7 @@ class GTDProject(HelperProject):
 
     """
 
-    def activate_project(self, parent_project=None):
+    def activate(self, parent_project=None):
         """Move project from Someday/Maybe to active projects.
 
         :type parent_proj: str

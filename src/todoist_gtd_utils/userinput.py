@@ -63,10 +63,7 @@ def dialog_new_item(api, name=None, project=None):
     if parsed_input['project']:
         project = parsed_input['project']
 
-    project_id = None
-    if project:
-        project_id = project['id']
-    project_id = ask_project(api, default=project_id)
+    project = ask_project(api, default=project['id'])
 
     labels = ask_labels(api, default=parsed_input['labels'])
     date = ask_filter('Date', dateformats, default=parsed_input['date'],
@@ -76,7 +73,7 @@ def dialog_new_item(api, name=None, project=None):
     # TODO: handle go back in menu etc?
 
     item = api.items.add(content + ' :email:.', priority=priority, indent=1,
-                         project_id=project_id, date_string=date,
+                         project_id=project['id'], date_string=date,
                          labels=labels)
     return item
 
@@ -95,6 +92,7 @@ def ask_project(api, default=None):
     projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
     project_id = ask_choice('Project', choices=projects, default=default,
                             category="project")
+    return api.projects.get_by_id(project_id)
 
 
 def ask_date(api, default):

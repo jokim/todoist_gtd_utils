@@ -364,7 +364,7 @@ class GTDProject(HelperProject):
                                                        'target-projects')[0]
             parent_project = self.api.get_projects_by_name(parent_project)[0]
         if isinstance(parent_project, int):
-            parent_project = self.get_by_id(parent_project)
+            parent_project = self.api.projects.get_by_id(parent_project)
         self._move_project(parent_project)
         # TODO: more to do?
 

@@ -34,17 +34,16 @@ def menu_project(api, project, extra=None):
 
     def activate_project():
         targetprojects = api.config.get_commalist('gtd', 'target-projects')
-        project_id = None
         if len(targetprojects) == 1:
-            project_id = api.get_projects_by_name(targetprojects[0])
+            parent = api.get_projects_by_name(targetprojects[0])
         elif len(targetprojects) > 1:
-            project_id = userinput.ask_choice('Where to?',
-                                              choices=targetprojects,
-                                              default=0, category="project")
+            choice = userinput.ask_choice('Where to?', choices=targetprojects,
+                                          default=0, category="project")
+            parent = api.get_projects_by_name(targetprojects[choice])
         else:
             print("No target projects defined. Where to move?")
-            project_id = userinput.ask_project(api)
-        project.activate(project_id)
+            parent = userinput.ask_project(api)
+        project.activate(parent)
         print("Project activated")
 
     def hibernate_project():

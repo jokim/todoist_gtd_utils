@@ -265,30 +265,6 @@ class HelperProject(todoist.models.Project):
         return self.update(indent=new_parent['indent'] + 1,
                            item_order=new_order)
 
-    def activate_project(self, parent_project=None):
-        """Move project from Someday/Maybe to active projects.
-
-        :type parent_proj: str
-        :param parent_proj:
-            What parent project to move this to. Should be a GTD specific
-            project in Todoist, either "GTD" or something more granular, like
-            "Personal" and "Work.
-
-        """
-        if not parent_project:
-            parent_project = self.config.get_commalist('gtd',
-                                                       'target-projects')[0]
-        self._move_project(parent_project)
-        # TODO: more to do?
-
-    def postpone_project(self, someday_project=None):
-        """Move project to Someday/Maybe."""
-        if not someday_project:
-            # TODO: Get from config?
-            someday_project = self.api.get_projects_by_name('Someday Maybe')
-        self._move_project(someday_project)
-        # TODO: more to do?
-
     def get_child_items(self, include_child_projects=False):
         """Return all items in the project."""
         project_ids = [self['id']]
@@ -362,6 +338,38 @@ class HelperProject(todoist.models.Project):
 
     def __str__(self):
         return self.__unicode__().encode('utf-8')
+
+
+class GTDProject(HelperProject):
+    """ GTD functionality for a project.
+
+    This is an abstraction up from HelperProject.
+
+    """
+
+    def activate_project(self, parent_project=None):
+        """Move project from Someday/Maybe to active projects.
+
+        :type parent_proj: str
+        :param parent_proj:
+            What parent project to move this to. Should be a GTD specific
+            project in Todoist, either "GTD" or something more granular, like
+            "Personal" and "Work.
+
+        """
+        if not parent_project:
+            parent_project = self.config.get_commalist('gtd',
+                                                       'target-projects')[0]
+        self._move_project(parent_project)
+        # TODO: more to do?
+
+    def hibernate(self, someday_project=None):
+        """Move project to Someday/Maybe."""
+        if not someday_project:
+            # TODO: Get from config?
+            someday_project = self.api.get_projects_by_name('Someday Maybe')
+        self._move_project(someday_project)
+        # TODO: more to do?
 
 
 class GTDItem(todoist.models.Item):
@@ -524,5 +532,5 @@ class HelperProjectNote(todoist.models.ProjectNote):
 
 
 todoist.models.Item = HumanItem
-todoist.models.Project = HelperProject
+todoist.models.Project = GTDProject
 todoist.models.ProjectNote = HelperProjectNote

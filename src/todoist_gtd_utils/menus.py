@@ -32,8 +32,8 @@ def menu_project(api, project, extra=None):
         project.delete()
         print("Project deleted")
 
-    def postpone_project():
-        project.postpone_project()
+    def hibernate_project():
+        project.hibernate()
         print("Project moved to Someday/Maybe")
 
     def create_item():
@@ -59,7 +59,7 @@ def menu_project(api, project, extra=None):
     userinput.ask_menu(
         {'d': ('Set project to done (archive)', archive_project),
          'v': ('View project', view_project),
-         'm': ('Move project to Someday/Maybe', postpone_project),
+         'h': ('Hibernate project (Someday/Maybe)', hibernate_project),
          'Gp': ('Go to parent project', go_parent),
          'Ga': ('Go to an action', go_parent),
          'c': ('Create next action', create_item),

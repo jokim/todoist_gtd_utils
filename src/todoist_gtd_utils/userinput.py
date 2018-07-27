@@ -473,7 +473,10 @@ def ask_menu(options, prompt="Choose", quit_char='q'):
     :param prompt: What to ask for in the menu
 
     """
+    maxlen = max(len(x) for x in options)
+    formatter = '{{:>{maxlen}}}: {{}}'.format(maxlen=maxlen)
     _set_completer(options)
+
     while True:
         try:
             answer = get_input("{} (? for menu): ".format(prompt))
@@ -484,9 +487,11 @@ def ask_menu(options, prompt="Choose", quit_char='q'):
         if answer == '?':
             print("Options: ")
             for k in sorted(options):
-                print("{}: {}".format(k, options[k][0]))
-            print("q: Quit this menu (go next)")
-            print("?: Show this info")
+                print(formatter.format(k, options[k][0]))
+            print("{:>{maxlen}}: Quit this menu (go next)"
+                  .format('q', maxlen=maxlen))
+            print("{:>{maxlen}}: Show this info"
+                  .format('?', maxlen=maxlen))
             print('')
         elif answer == quit_char:
             print("Ok")

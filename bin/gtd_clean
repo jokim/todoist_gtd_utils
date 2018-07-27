@@ -1,7 +1,9 @@
 #!/bin/env python
 # -*- encoding: utf-8 -*-
 
-"""Clean up GTD data in Todoist, where needed.
+""" Clean up GTD data in Todoist, where needed.
+
+TODO: rename!
 
 For now supports:
 
@@ -75,10 +77,10 @@ def ask_about_inactive_project(api, item, project=None):
     else:
         print("Inactive item with a due date:")
     print(item)
-    choices = ('activate', 'ignore', 'delay')
+    choices = ('activate', 'ignore', 'delay', 'edit')
     choice = userinput.ask_choice("What to do?", choices=choices,
-                                  default='activate')
-    if choice == 0:
+                                  default=0, default_value='activate')
+    if choices[choice] == 'activate':
         if len(targetprojects) > 1:
             move = userinput.ask_choice("Activate in what GTD project?",
                                         targetprojects,
@@ -95,12 +97,17 @@ def ask_about_inactive_project(api, item, project=None):
 
         api.force_commit()
         print("Project moved to GTD-project: {}".format(new_parent['name']))
-    elif choice == 2:
+    elif choices[choice] == 'delay':
         date = userinput.ask_filter("For how long?", userinput.dateformats,
                                     default='in 7 days', category='date')
         item.update(date_string=date)
         api.force_commit()
         print("Task delayed")
+    elif choices[choice] == 'edit':
+        if project:
+            menus.menu_project(api, project)
+        else:
+            menus.menu_item(api, item)
     else:
         print("Ok. Ignore it, for now…")
     print()

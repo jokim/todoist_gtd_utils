@@ -91,7 +91,7 @@ def ask_about_inactive_project(api, item, project=None):
                                         targetprojects,
                                         default=targetprojects[0],
                                         category='project')
-            targetprojects = [move]
+            targetprojects = [targetprojects[move]]
         new_parent = api.get_projects_by_name(targetprojects[0])
         if project:
             # Move the whole project

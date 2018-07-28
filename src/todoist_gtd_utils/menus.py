@@ -99,7 +99,7 @@ def menu_item(api, item, extra=None):
     """
     # Define callbacks for actions
     def archive_item():
-        item.archive()
+        item.complete()
         api.force_commit()
         print("Action archived")
 

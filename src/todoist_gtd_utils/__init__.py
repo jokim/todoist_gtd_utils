@@ -285,7 +285,11 @@ class HelperProject(todoist.models.Project):
 
         """
         print(self.get_short_preview())
-        print("\nParent project: {}".format(self.get_parent_project()))
+        print("")
+        try:
+            print("Parent project: {}".format(self.get_parent_project()))
+        except IndexError:
+            pass
         children = self.get_child_projects()
         if children:
             print("\nChild project:")

@@ -75,6 +75,13 @@ def menu_project(api, project, extra=None):
     def view_project():
         project.print_presentation()
 
+    def view_completed():
+        tmp = api.completed.get_all(project_id=project['id'])
+        for i in tmp['items']:
+            print(i['content'])
+            if i['meta_data']:
+                print(" - meta data: {}".format(i['meta_data']))
+
     def set_description():
         description = userinput.ask_description(api, project['name'])
         project.update(name=description)
@@ -101,6 +108,7 @@ def menu_project(api, project, extra=None):
     userinput.ask_menu(
         {'D': ('Set project to done (archive)', archive_project),
          'v': ('View project', view_project),
+         'vc': ('View completed actions', view_completed),
          'Del': ('Delete project', delete_project),
          'a': ('Activate project', activate_project),
          'h': ('Hibernate project (Someday/Maybe)', hibernate_project),

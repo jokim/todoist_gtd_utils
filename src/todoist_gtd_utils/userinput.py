@@ -64,7 +64,7 @@ def dialog_new_item(api, name=None, project=None):
     if parsed_input['project']:
         project = parsed_input['project']
 
-    project = ask_project(api, default=project['id'])
+    project = ask_project(api, default=project)
 
     labels = ask_labels(api, default=parsed_input['labels'])
     date = ask_filter('Date', dateformats, default=parsed_input['date'],
@@ -90,10 +90,10 @@ def ask_description(api, default):
 
 def ask_project(api, default=None):
     """Ask user for a valid project"""
-    projects = dict((p['id'], unicode(p['name'])) for p in api.projects.all())
-    project_id = ask_choice('Project', choices=projects, default=default,
-                            category="project")
-    return api.projects.get_by_id(project_id)
+    projects = dict((p, unicode(p['name'])) for p in api.projects.all())
+    project = ask_choice('Project', choices=projects, default=default,
+                         category="project")
+    return project
 
 
 def ask_date(api, default):
@@ -103,6 +103,7 @@ def ask_date(api, default):
         # Special case for unsetting date
         return None
     return ret
+
 
 def ask_priority(api, default):
     choices = [1, 2, 3, 4]
@@ -270,22 +271,19 @@ def ask_choice(prompt, choices, default=None, category='choice',
                default_value=''):
     """Prompts user to select one of given choices.
 
-    Warning: Choices can't have same value.
-
     The user gets reprompted if invalid choice. If users gives blank answer,
     the `default` is returned. Note that "?" is reserved, as the user then gets
     the whole list of choices.
+
+    Note: Choices can't have same value.
 
     :type prompt: unicode
     :param prompt: What to ask the user for. Result: `Prompt [default]: `
 
     :type choices: list, tuple or dict
     :param choices:
-        The options the user are limited to select. If a dict, the values are
-        what the user sees and selects from, while the chosen *key* is
-        returned.
-
-        TODO: Behave the same way for dicts and list, i.e. return key or index.
+        The options the user are limited to select. The values are shown to the
+        user, and the key or index is returned from the method.
 
     :param default:
         Gets returned if user doesn't select anything. Doesn't care if
@@ -295,6 +293,9 @@ def ask_choice(prompt, choices, default=None, category='choice',
     :param default_value:
         What is shown to the user as "default value". Uses `default` if this is
         not set. Only used for presentation, not for return values.
+
+    :return:
+        The key or index of the chosen element, or the given `default` value.
 
     """
     if not isinstance(choices, dict):

@@ -33,6 +33,7 @@ def menu_project(api, project, extra=None):
         print("Project deleted")
 
     def activate_project():
+        # TODO: check if project is already active
         targetprojects = api.config.get_commalist('gtd', 'target-projects')
         if len(targetprojects) == 1:
             parent = api.get_projects_by_name(targetprojects[0])
@@ -47,16 +48,43 @@ def menu_project(api, project, extra=None):
         print("Project activated")
 
     def hibernate_project():
-        project.hibernate()
-        print("Project moved to Someday/Maybe")
+        hibernated = api.config.get_commalist('gtd', 'someday-projects')
+        if len(hibernated) == 1:
+            parent = api.get_projects_by_name(hibernated[0])
+        elif len(hibernated) > 1:
+            choice = userinput.ask_choice('Where to?', choices=hibernated,
+                                          default=0, category="project")
+            parent = api.get_projects_by_name(hibernated[choice])
+        else:
+            print("No someday projects defined. Where to move?")
+            parent = userinput.ask_project(api)
+        project.hibernate(parent)
+        print("Project hibernated to {}".format(parent))
+
+    def move_project():
+        print("Choose new parent project:")
+        new_parent = userinput.ask_project(api)
+        project.move_project(new_parent)
+        print('Project moved')
 
     def create_item():
         userinput.dialog_new_item(api, project=project)
         print("Next action created")
-        # TODO: menu for item
+        # TODO: menu for item?
 
     def view_project():
         project.print_presentation()
+
+    def set_description():
+        description = userinput.ask_description(api, project['name'])
+        project.update(name=description)
+        api.force_commit()
+        print("Description updated")
+
+    def add_note():
+        print("TODO, add project note missing")
+        # TODO
+        pass
 
     def go_parent():
         try:
@@ -71,14 +99,18 @@ def menu_project(api, project, extra=None):
             print("Going back to project {}".format(project))
 
     userinput.ask_menu(
-        {'d': ('Set project to done (archive)', archive_project),
-         'a': ('Activate project', activate_project),
+        {'D': ('Set project to done (archive)', archive_project),
          'v': ('View project', view_project),
+         'Del': ('Delete project', delete_project),
+         'a': ('Activate project', activate_project),
          'h': ('Hibernate project (Someday/Maybe)', hibernate_project),
+         'm': ('Move to another parent', move_project),
+         'e': ('Edit description (project name)', set_description),
+         'c': ('Create next action', create_item),
+         'n': ('Create new project note', add_note),
+         # Navigation
          'Gp': ('Go to parent project', go_parent),
          'Ga': ('Go to an action', go_parent),
-         'c': ('Create next action', create_item),
-         'D': ('Delete project', delete_project),
          },
         prompt="For project {}, what to do?".format(project))
     api.force_commit()
@@ -108,19 +140,16 @@ def menu_item(api, item, extra=None):
         api.force_commit()
         print("Action deleted. Most commands now doesn't work.")
 
-    def set_project():
-        # TODO: move to a helper method in userinput?
-        projects = dict((p['id'], unicode(p['name'])) for p in
-                        api.projects.all())
-        project_id = userinput.ask_choice('Project', choices=projects,
-                                          default=item['project_id'],
-                                          category="project")
-        item.move_to_project(project_id)
+    def move_item():
+        project = userinput.ask_project(api, default=item.get_project())
+        item.move_to_project(project)
         api.force_commit()
         print("Project set")
 
     def add_note():
         # TODO: Ask for input
+        # Should we be able to ask to fetch e.g. from an URL, or file, or just
+        # start the editor?
         print("TODO")
         api.force_commit()
         pass
@@ -139,10 +168,33 @@ def menu_item(api, item, extra=None):
         print(item.get_presentation())
         item.print_note_preview()
 
-    def move_item():
-        # TODO: ask for to what project
-        api.force_commit()
-        print("TODO")
+    def activate_item():
+        targetprojects = api.config.get_commalist('gtd', 'target-projects')
+        if len(targetprojects) == 1:
+            parent = api.get_projects_by_name(targetprojects[0])
+        elif len(targetprojects) > 1:
+            choice = userinput.ask_choice('Where to?', choices=targetprojects,
+                                          default=0, category="project")
+            parent = api.get_projects_by_name(targetprojects[choice])
+        else:
+            print("No target projects defined. Where to move?")
+            parent = userinput.ask_project(api)
+        item.activate(parent)
+        print("Item activated")
+
+    def hibernate_item():
+        hibernated = api.config.get_commalist('gtd', 'someday-projects')
+        if len(hibernated) == 1:
+            parent = api.get_projects_by_name(hibernated[0])
+        elif len(hibernated) > 1:
+            choice = userinput.ask_choice('Where to?', choices=hibernated,
+                                          default=0, category="project")
+            parent = api.get_projects_by_name(hibernated[choice])
+        else:
+            print("No someday projects defined. Where to move it?")
+            parent = userinput.ask_project(api)
+        item.hibernate(parent)
+        print("Action hibernated to {}".format(parent))
 
     def set_labels():
         l = userinput.ask_labels(api, api.get_label_name(item['labels']))
@@ -168,20 +220,29 @@ def menu_item(api, item, extra=None):
         api.force_commit()
         print("Description updated")
 
+    def go_project():
+        try:
+            menu_project(api, item.get_project())
+        except EOFError:
+            print("Going back to item {}".format(item))
+
     print("In item {}".format(item))
     userinput.ask_menu(
         {'D': ('Set action to done (archive)', archive_item),
-         'd': ('Set date', set_date),
-         'e': ('Edit description', set_description),
          'v': ('View action', view_item),
-         'l': ('Set labels', set_labels),
-         'm': ('Move item to Someday/Maybe', move_item),
-         'n': ('Create new note', add_note),
-         'p': ('Set project', set_project),
-         't': ('Set priority', set_priority),
-         'Gn': ('Go to a note to edit (EDITOR?)', edit_note),
-         'Gp': ("Go to item's project", menu_project),
          'Del': ('Delete item', delete_item),
+         'a': ('Activate action (move back from Someday/Maybe)',
+               activate_item),
+         'h': ('Hibernate item (Someday/Maybe)', hibernate_item),
+         'm': ('Move item to another project', move_item),
+         'd': ('Set due date', set_date),
+         'e': ('Edit description', set_description),
+         'l': ('Set labels', set_labels),
+         'n': ('Create new note', add_note),
+         'p': ('Set priority', set_priority),
+         # Navigation
+         'Gn': ('Go to a note to edit (EDITOR?)', edit_note),
+         'Gp': ("Go to item's project", go_project),
          },
         prompt="What to do?")
     api.force_commit()

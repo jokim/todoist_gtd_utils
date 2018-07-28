@@ -252,7 +252,7 @@ class HelperProject(todoist.models.Project):
             ret.append(p)
         return ret
 
-    def _move_project(self, new_parent):
+    def move_project(self, new_parent):
         """Move self to new given parent project.
 
         The order in sub project list is, for now, set to the middle.
@@ -314,7 +314,8 @@ class HelperProject(todoist.models.Project):
         """
         max = userinput.get_terminal_size()[1]
         pre = []
-        pre.append(' ' * (self['indent'] - 1))
+        if self['indent'] > 1:
+            pre.append(' ' * (self['indent'] - 1))
         if self['is_deleted']:
             pre.append("[DELETED]")
         if self['is_archived']:
@@ -352,29 +353,49 @@ class GTDProject(HelperProject):
     def activate(self, parent_project=None):
         """Move project from Someday/Maybe to active projects.
 
-        :type parent_proj: str
+        :type parent_proj: todoist.models.Project
         :param parent_proj:
             What parent project to move this to. Should be a GTD specific
             project in Todoist, either "GTD" or something more granular, like
-            "Personal" and "Work.
+            "Personal" and "Work. Defaults to the first project from config.
 
         """
         if not parent_project:
             parent_project = self.config.get_commalist('gtd',
                                                        'target-projects')[0]
-            parent_project = self.api.get_projects_by_name(parent_project)[0]
+            parent_project = self.api.get_projects_by_name(parent_project)
         if isinstance(parent_project, int):
             parent_project = self.api.projects.get_by_id(parent_project)
-        self._move_project(parent_project)
+        self.move_project(parent_project)
         # TODO: more to do?
+
+    def is_hibernated(self):
+        """Check if project is hibernated.
+
+        :rtype: bool
+
+        """
+        parent = self.get_parent_project()
+        # TODO: Would be nice with shortcut methods for most of this method
+        hibernates = self.config.get_commalist('gtd', 'someday-projects')
+        hibernates = self.api.get_projects_by_name(hibernates,
+                                                   raise_on_duplicate=False)
+        all_hibernated = []
+        for p in hibernates:
+            all_hibernated.append(p)
+            all_hibernated.extend(p.get_child_projects())
+
+        return self in all_hibernated or parent in all_hibernated
 
     def hibernate(self, someday_project=None):
         """Move project to Someday/Maybe."""
         if not someday_project:
-            # TODO: Get from config?
-            someday_project = self.api.get_projects_by_name('Someday Maybe')
-        self._move_project(someday_project)
-        # TODO: more to do?
+            hibernate = self.config.get_commalist('gtd', 'someday-projects')[0]
+            someday_project = self.get_projects_by_name(hibernate)
+        # TODO: validate if given someday project is according to hibernated
+        # from config?
+        self.move_project(someday_project)
+        # TODO: more to do? Like, disabling labels etc?
 
 
 class GTDItem(todoist.models.Item):
@@ -415,12 +436,50 @@ class GTDItem(todoist.models.Item):
         return self.api.projects.get_by_id(self['project_id'])
 
     def move_to_project(self, new_parent):
-        """Helper method for easier move of item."""
-        if isinstance(new_parent, HelperProject):
+        """Helper method for easier move of item.
+
+        :type new_parent: todoist.models.Project or int
+
+        """
+        if isinstance(new_parent, todoist.models.Project):
             new_parent = new_parent['id']
         # TODO: Add more sanity checks here, since todoist doesn't seem to
         # check much. Some of my test items disappeared, but not confirmed.
         self.move(new_parent)
+
+    def activate(self, parent_project=None):
+        """Move item from Someday/Maybe to an active project.
+
+        :type parent_proj: todoist.models.Project
+        :param parent_proj:
+            What parent project to move this to. Should be a GTD specific
+            project in Todoist, either "GTD" or something more granular, like
+            "Personal" and "Work. Defaults to the first project from config.
+
+        """
+        if not parent_project:
+            parent_project = self.config.get_commalist('gtd',
+                                                       'target-projects')[0]
+            parent_project = self.api.get_projects_by_name(parent_project)
+        if isinstance(parent_project, int):
+            parent_project = self.api.projects.get_by_id(parent_project)
+        self.move_to_project(parent_project)
+        # TODO: more to do?
+        # TODO: archive labels etc
+
+    def hibernate(self, someday_project=None):
+        """Move item to Someday/Maybe.
+
+        :type someday_project: todoist.models.Project
+
+        """
+        if not someday_project:
+            hibernate = self.config.get_commalist('gtd', 'someday-projects')[0]
+            someday_project = self.get_projects_by_name(hibernate)
+        # TODO: validate if given someday project is according to hibernated
+        # from config?
+        self.move_to_project(someday_project)
+        # TODO: more to do? Like, disabling labels etc?
 
 
 class HumanItem(GTDItem):

@@ -81,13 +81,16 @@ def test_ask_choice_simple():
     add_response("abc")
     answer = userinput.ask_choice(prompt="Enter data:", choices=['abc', 'def'])
     assert answer == 0
+    add_response("def")
+    answer = userinput.ask_choice(prompt="Enter data:", choices=('abc', 'def'))
+    assert answer == 1
 
 
 def test_ask_choice_default():
     add_response("")
     answer = userinput.ask_choice(prompt="Enter data:", choices=['abc', 'def'],
-                                  default=1)
-    assert answer == 1
+                                  default='none selected')
+    assert answer == 'none selected'
 
 
 def test_ask_choice_dict():
@@ -105,6 +108,39 @@ def test_ask_choice_dict_default():
                                            'mary': 'Mary Bee', },
                                   default=default)
     assert answer == default
+
+
+def test_ask_choice_dict_objects():
+    class Something(object):
+        def __init__(self, input):
+            self.i = input
+
+    s1 = Something(11)
+    s2 = Something('test2')
+    s3 = Something(1024)
+    add_response("second")
+    answer = userinput.ask_choice(prompt="",
+                                  choices={s1: 'first', s2: 'second',
+                                           s3: 'third'})
+    assert answer == s2
+    assert answer.i == 'test2'
+
+
+def test_ask_choice_dict_objects_str():
+    class Something(object):
+        def __init__(self, input):
+            self.i = input
+
+        def __str__(self):
+            return self.i
+
+    s1 = Something('one')
+    s2 = Something('two')
+    s3 = Something('three')
+    add_response("three")
+    answer = userinput.ask_choice(prompt="",
+                                  choices=(s1, s2, s3))
+    assert answer == 2
 
 
 def test_ask_multichoice_simple():

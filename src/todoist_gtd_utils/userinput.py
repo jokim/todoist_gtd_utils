@@ -17,6 +17,7 @@ from .utils import trim_whitespace, frontend_priority_to_api
 dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
                '(after |every )?tomorrow',
                'today',
+               'none',
                '(after |every )?(\d+ )?(work)?day(s)?',
                '(after |every )?next month', '(after |every )?next year',
                '[0-3]?[0-9]\. [a-z]{3,6}( \d{4})?',
@@ -97,8 +98,11 @@ def ask_project(api, default=None):
 
 def ask_date(api, default):
     """Ask user for a valid date"""
-    return ask_filter('Date', dateformats, default=default, category="date")
-
+    ret = ask_filter('Date', dateformats, default=default, category="date")
+    if ret.lower() == 'none':
+        # Special case for unsetting date
+        return None
+    return ret
 
 def ask_priority(api, default):
     choices = [1, 2, 3, 4]

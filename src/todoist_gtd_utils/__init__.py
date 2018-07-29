@@ -278,6 +278,10 @@ class HelperProject(todoist.models.Project):
         return self.api.project_notes.all(
                                     lambda x: x['project_id'] == self['id'])
 
+    def get_url(self):
+        """Get app URL, for humans"""
+        return '{}/app#project/{}'.format(self.api.api_endpoint, self['id'])
+
     def print_presentation(self):
         """Get details about the project, in a presentable manner.
 
@@ -285,6 +289,7 @@ class HelperProject(todoist.models.Project):
 
         """
         print(self.get_short_preview())
+        print(self.get_url())
         print("")
         try:
             print("Parent project: {}".format(self.get_parent_project()))

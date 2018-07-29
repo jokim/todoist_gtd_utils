@@ -153,9 +153,8 @@ def remove_labels_in_someday(api, args):
     print("Ignore labels: {}".format(', '.join(ignore_labels)))
 
     items = []
-    for proj in api.get_somedaymaybe():
-        child_pr = _get_child_project_ids(api, proj)
-        items.extend(_get_items(api, child_pr))
+    for project in api.get_somedaymaybe():
+        items.extend(project.get_child_items(include_child_projects=True))
     print("Processing {} items…".format(len(items)))
 
     def add_labels(content, labels):
@@ -172,11 +171,10 @@ def remove_labels_in_someday(api, args):
             continue
         print("\n{}".format(i.get_presentation()))
         labelnames = api.get_label_name(labels_to_remove)
+        # TODO: Change this to a menu, to be able to edit project/item when
+        # needed
         if userinput.ask_confirmation(u"Ok to remove labels: {}?".format(
                 ', '.join(labelnames)), args):
-            # TODO: add support for editing the labels and not just y/n?
-            # TODO: And other actions, like activating project, deleting item
-            # etc
             remaining_l = set(i['labels']) - labels_to_remove
             for l in labels_to_remove:
                 api.notes.add(i['id'], "gtd_utils:removed_label:{}:{}"

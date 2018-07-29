@@ -88,8 +88,7 @@ def ask_about_inactive_project(api, item, project=None):
     if choices[choice] == 'activate':
         if len(targetprojects) > 1:
             move = userinput.ask_choice("Activate in what GTD project?",
-                                        targetprojects,
-                                        default=targetprojects[0],
+                                        targetprojects, default=0,
                                         category='project')
             targetprojects = [targetprojects[move]]
         new_parent = api.get_projects_by_name(targetprojects[0])

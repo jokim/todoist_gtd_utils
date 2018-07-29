@@ -301,12 +301,12 @@ class HelperProject(todoist.models.Project):
             for child in children:
                 print(child)
 
-        print('\nItems:')
+        cprint('\nItems:', attrs=['bold'])
         items = self.get_child_items()
         if not items:
             print("(found no items)")
         for item in items:
-            print(item)
+            print("{:>2} {}".format(item['item_order'], item))
 
         notes = self.get_notes()
         if notes:
@@ -396,14 +396,26 @@ class GTDProject(HelperProject):
 
         return self in all_hibernated or parent in all_hibernated
 
-    def hibernate(self, someday_project=None):
-        """Move project to Someday/Maybe."""
+    def hibernate(self, someday_project=None, reactivate_date=None):
+        """Move project to Someday/Maybe.
+
+        :type reactivate_date: str
+        :param reactivate_date:
+            If set, creates an item in project with given date as due date, to
+            trigger a reactivation by this script.
+
+        """
         if not someday_project:
+            # TODO: change to use get_somedaymaybe()
             hibernate = self.config.get_commalist('gtd', 'someday-projects')[0]
             someday_project = self.get_projects_by_name(hibernate)
         # TODO: validate if given someday project is according to hibernated
         # from config?
         self.move_project(someday_project)
+        if reactivate_date:
+            self.api.items.add(content="* gtd_clean:Reactive_date",
+                               project_id=self['id'],
+                               date_string=reactivate_date)
         # TODO: more to do? Like, disabling labels etc?
 
 

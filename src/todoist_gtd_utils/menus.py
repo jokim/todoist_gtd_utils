@@ -29,8 +29,9 @@ def menu_project(api, project, extra=None):
         print("Project archived")
 
     def delete_project():
-        project.delete()
-        print("Project deleted")
+        if userinput.ask_confirmation('Are you sure you want to delete it?'):
+            project.delete()
+            print("Project deleted. Most commands now doesn't work.")
 
     def activate_project():
         # TODO: check if project is already active
@@ -58,7 +59,12 @@ def menu_project(api, project, extra=None):
         else:
             print("No someday projects defined. Where to move?")
             parent = userinput.ask_project(api)
-        project.hibernate(parent)
+
+        print("Reactivate at some date?")
+        date = userinput.ask_date(api)
+        if date == 'none':
+            date = None
+        project.hibernate(parent, date)
         print("Project hibernated to {}".format(parent))
 
     def move_project():
@@ -85,13 +91,22 @@ def menu_project(api, project, extra=None):
     def set_description():
         description = userinput.ask_description(api, project['name'])
         project.update(name=description)
-        api.force_commit()
         print("Description updated")
 
     def add_note():
         print("TODO, add project note missing")
         # TODO
-        pass
+
+    def clone_project():
+        print("TODO")
+        # TODO
+
+    def convert_to_item():
+        print("TODO")
+        # TODO
+
+    def sync():
+        api.sync()
 
     def go_parent():
         try:
@@ -105,6 +120,16 @@ def menu_project(api, project, extra=None):
         except EOFError:
             print("Going back to project {}".format(project))
 
+    def go_action():
+        items = project.get_child_items()
+        # items_by_order = dict((i['item_order'], i) for i in items)
+        item = userinput.ask_choice_of_list("Choose action", items)
+        if item is not None:
+            try:
+                menu_item(api, items[item])
+            except EOFError:
+                print("Going back to project {}".format(project))
+
     userinput.ask_menu(
         {'D': ('Set project to done (archive)', archive_project),
          'v': ('View project', view_project),
@@ -116,11 +141,15 @@ def menu_project(api, project, extra=None):
          'e': ('Edit description (project name)', set_description),
          'c': ('Create next action', create_item),
          'n': ('Create new project note', add_note),
+         'cl': ('Clone project', clone_project),
+         'cv': ('Convert to action', convert_to_item),
          # Navigation
-         'Gp': ('Go to parent project', go_parent),
-         'Ga': ('Go to an action', go_parent),
+         'gp': ('Go to parent project', go_parent),
+         'ga': ('Go to an action', go_action),
+         # System
+         'Ss': ('Sync with Todoist (fetch)', sync),
          },
-        prompt="For project {}, what to do?".format(project))
+        prompt="Menu for project {}".format(project))
     api.force_commit()
 
 
@@ -140,18 +169,16 @@ def menu_item(api, item, extra=None):
     # Define callbacks for actions
     def archive_item():
         item.complete()
-        api.force_commit()
         print("Action archived")
 
     def delete_item():
-        item.delete()
-        api.force_commit()
-        print("Action deleted. Most commands now doesn't work.")
+        if userinput.ask_confirmation('Are you sure you want to delete it?'):
+            item.delete()
+            print("Action deleted. Most commands now doesn't work.")
 
     def move_item():
         project = userinput.ask_project(api, default=item.get_project())
         item.move_to_project(project)
-        api.force_commit()
         print("Project set")
 
     def add_note():
@@ -159,12 +186,10 @@ def menu_item(api, item, extra=None):
         # Should we be able to ask to fetch e.g. from an URL, or file, or just
         # start the editor?
         print("TODO")
-        api.force_commit()
         pass
 
     def edit_note():
         print("TODO")
-        api.force_commit()
         # TODO: Make it's own menu for this?
         # 1. list attachments
         # 2. choose an attachment
@@ -207,26 +232,33 @@ def menu_item(api, item, extra=None):
     def set_labels():
         l = userinput.ask_labels(api, api.get_label_name(item['labels']))
         item.update(labels=l)
-        api.force_commit()
         print("Labels updated")
 
     def set_date():
         d = userinput.ask_date(api, item['date_string'])
         item.update(date_string=d)
-        api.force_commit()
         print("Date updated")
 
     def set_priority():
         p = userinput.ask_priority(api, item['priority'])
         item.update(priority=p)
-        api.force_commit()
         print("Priority updated")
 
     def set_description():
         description = userinput.ask_description(api, item['content'])
         item.update(content=description)
-        api.force_commit()
         print("Description updated")
+
+    def clone_item():
+        # TODO
+        print("TODO")
+
+    def convert_to_project():
+        # TODO
+        # Use same parent as item
+        # Create project with same details
+        # TBD: Add notes as items?
+        print("TODO")
 
     def go_project():
         try:
@@ -234,7 +266,9 @@ def menu_item(api, item, extra=None):
         except EOFError:
             print("Going back to item {}".format(item))
 
-    print("In item {}".format(item))
+    def sync():
+        api.sync()
+
     userinput.ask_menu(
         {'D': ('Set action to done (archive)', archive_item),
          'v': ('View action', view_item),
@@ -248,9 +282,13 @@ def menu_item(api, item, extra=None):
          'l': ('Set labels', set_labels),
          'n': ('Create new note', add_note),
          'p': ('Set priority', set_priority),
+         'cl': ('Clone action', clone_item),
+         'cv': ('Convert to project', convert_to_project),
          # Navigation
-         'Gn': ('Go to a note to edit (EDITOR?)', edit_note),
-         'Gp': ("Go to item's project", go_project),
+         'gn': ('Go to a note to edit (EDITOR?)', edit_note),
+         'gp': ("Go to item's project", go_project),
+         # System
+         'Ss': ('Sync with Todoist (fetch)', sync),
          },
-        prompt="What to do?")
+        prompt="Menu for action {}".format(item))
     api.force_commit()

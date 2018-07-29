@@ -96,10 +96,10 @@ def ask_project(api, default=None):
     return project
 
 
-def ask_date(api, default):
+def ask_date(api, default=None):
     """Ask user for a valid date"""
     ret = ask_filter('Date', dateformats, default=default, category="date")
-    if ret.lower() == 'none':
+    if ret and ret.lower() == 'none':
         # Special case for unsetting date
         return None
     return ret

@@ -305,8 +305,9 @@ class HelperProject(todoist.models.Project):
         items = self.get_child_items()
         if not items:
             print("(found no items)")
+        # TODO: Sort by 'item_order':
         for item in items:
-            print("{:>2} {}".format(item['item_order'], item))
+            print("{:>2} {}".format(item.data.get('item_order', 999), item))
 
         notes = self.get_notes()
         if notes:
@@ -413,7 +414,7 @@ class GTDProject(HelperProject):
         # from config?
         self.move_project(someday_project)
         if reactivate_date:
-            self.api.items.add(content="* gtd_clean:Reactive_date",
+            self.api.items.add(content="* gtd_clean:Reactivate_date",
                                project_id=self['id'],
                                date_string=reactivate_date)
         # TODO: more to do? Like, disabling labels etc?

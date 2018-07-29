@@ -307,7 +307,7 @@ def ask_choice(prompt, choices, default=None, category='choice',
 
     _set_completer(mapping)
     while True:
-        if default_value:
+        if default_value is not None:
             prompt_str = "{} [{}]: ".format(prompt, default_value)
         else:
             prompt_str = "{} [? for list]: ".format(prompt)

@@ -227,18 +227,18 @@ def login_dialog(api):
 
 
 def ask_confirmation(prompt, args=None):
-    """Return True if user confirms prompt
+    """Return True if user confirms prompt.
 
     :type args: argparse.Namespace
     :param args:
-        The parsed arguments from `argparse.ArgumentPaser`, to search for if
-        the user has set `--assume-yes`, for less interaction.
+        If the user has added `--yes` as input, the user is not prompted and
+        the method returns True.
 
     """
     if args and getattr(args, 'yes'):
         return True
-    ret = get_input(prompt + " (y/N): ")
-    return ret == 'y'
+    ret = get_input(prompt + " (Y/n): ")
+    return ret == 'y' or ret == ''
 
 
 def _set_completer(choices):

@@ -22,6 +22,8 @@ Some cleanup is also included:
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from termcolor import cprint
+
 from todoist_gtd_utils import userinput
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import menus
@@ -251,20 +253,18 @@ def restore_labels_in_projects(api):
 def process_gtd_projects(api):
     """Review each active project according to GTD.
 
-    What is automatically checked, for now:
-
-    # Each project should have a next action
-
     """
     targetprojects = api.config.get_commalist('gtd', 'target-projects')
     for t in targetprojects:
         parent = api.get_projects_by_name(t)
         for p in parent.get_child_projects():
             tasks = p.get_child_items()
+            print("")
             if not filter(lambda t: t.is_actionable(), tasks):
-                print("No tasks for project «{}»".format(p['name']))
+                cprint("No tasks for project «{}»".format(p['name']),
+                       color='red')
 
-                menus.menu_project(api, p)
+            menus.menu_project(api, p)
 
 
 if __name__ == '__main__':
@@ -279,13 +279,13 @@ if __name__ == '__main__':
 
     cleanup_fields(api)
     api.sync()
-    print("\n== Prosessing Someday/Maybe ==")
+    print("\n== Processing Someday/Maybe ==")
     print("Any projects/items that should have been active?")
     process_active_projects_in_someday(api)
     print("Any labels that should be disabled?")
     remove_labels_in_someday(api, args)
 
-    print("\n== Prosessing active projects ==")
+    print("\n== Processing active projects ==")
     print("Any labels that should be enabled?")
     restore_labels_in_projects(api)
     print("\n== GTD review ==")

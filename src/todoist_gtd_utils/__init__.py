@@ -10,8 +10,6 @@ TODO:
 - Fix better config
 - todoist's own code is not optimal for my use, e.g. at script startup and some
   bugs. Create my own, lightweight client, using the REST API directly?
-- Create a global project menu, and a task menu, with all options needed for
-  most situations.
 
 """
 
@@ -305,8 +303,7 @@ class HelperProject(todoist.models.Project):
         items = self.get_child_items()
         if not items:
             print("(found no items)")
-        # TODO: Sort by 'item_order':
-        for item in items:
+        for item in sorted(items, key=lambda x: x.data.get('item_order', 999)):
             print("{:>2} {}".format(item.data.get('item_order', 999), item))
 
         notes = self.get_notes()

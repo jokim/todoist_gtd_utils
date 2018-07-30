@@ -8,6 +8,7 @@ from __future__ import unicode_literals
 import os
 import argparse
 import re
+import traceback
 import readline
 import getpass
 import requests
@@ -514,6 +515,10 @@ def ask_menu(options, prompt="Choose", quit_char='q'):
                 print('')
             except EOFError:
                 print("Command aborted")
+            except Exception as e:
+                cprint("Unhandled exception in menu action: {}".format(e),
+                       color="red")
+                traceback.print_exc()
         else:
             print("Invalid option: {}".format(answer))
             print("(Input ? for list of options)")

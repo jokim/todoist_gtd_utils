@@ -12,6 +12,8 @@ import readline
 import getpass
 import requests
 
+from termcolor import cprint, colored
+
 from .utils import trim_whitespace, frontend_priority_to_api
 
 dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
@@ -34,8 +36,9 @@ def get_input(prompt):
     """Unicodify raw_input"""
     # Force unicodified input
     assert isinstance(prompt, unicode)
+    prompt = colored(prompt.encode('utf-8'), color='yellow')
     # TODO: How to check terminals' charset? LC_ALL?
-    return unicode(raw_input2(prompt.encode('utf-8')), 'utf-8')
+    return unicode(raw_input2(prompt), 'utf-8')
 
 
 def dialog_new_item(api, name=None, project=None):
@@ -368,8 +371,8 @@ def ask_filter(prompt, regex_choices, default=None, category='choice'):
         for r in regex_choices:
             if re.search(r, raw):
                 return raw
-        print("Invalid {}, please try again (? for help)"
-              .format(category))
+        cprint("Invalid {}, please try again (? for help)"
+              .format(category), color="red")
 
 
 def ask_multichoice(prompt, choices, default=[], category='choice',

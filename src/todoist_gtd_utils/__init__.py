@@ -374,7 +374,7 @@ class GTDProject(HelperProject):
         if isinstance(parent_project, int):
             parent_project = self.api.projects.get_by_id(parent_project)
         self.move_project(parent_project)
-        # TODO: more to do?
+        # TODO: more to do, e.g. activate labels
 
     def is_hibernated(self):
         """Check if project is hibernated.
@@ -383,16 +383,14 @@ class GTDProject(HelperProject):
 
         """
         parent = self.get_parent_project()
-        # TODO: Would be nice with shortcut methods for most of this method
-        hibernates = self.config.get_commalist('gtd', 'someday-projects')
-        hibernates = self.api.get_projects_by_name(hibernates,
-                                                   raise_on_duplicate=False)
-        all_hibernated = []
+        hibernates = self.api.get_somedaymaybe()
+        if self in hibernates or parent in hibernates:
+            return True
         for p in hibernates:
-            all_hibernated.append(p)
-            all_hibernated.extend(p.get_child_projects())
-
-        return self in all_hibernated or parent in all_hibernated
+            children = p.get_child_projects()
+            if self in children or parent in children:
+                return True
+        return False
 
     def hibernate(self, someday_project=None, reactivate_date=None):
         """Move project to Someday/Maybe.
@@ -529,7 +527,7 @@ class HumanItem(GTDItem):
         max = userinput.get_terminal_size()[1]
         ret = []
         # TODO: make content bold
-        ret.append(utils.trim_too_long(self.data.get('content'), max))
+        ret.append(self.data.get('content'))
         sub = []
         if self.data.get('date_string'):
             sub.append(colored('[{}]'.format(self['date_string'] or ''),
@@ -562,9 +560,13 @@ class HumanItem(GTDItem):
                    attrs=['dark'])
             print('')
 
-    def get_short_preview(self):
-        """Get one line with details of the item"""
-        max = userinput.get_terminal_size()[1]
+    def get_short_preview(self, oneliner=True):
+        """Get summary of the item.
+
+        :param oneliner:
+            If True, the output is cut to fit inside a terminal line.
+
+        """
         ret = []
         if self.data.get('date_string'):
             ret.append(colored('[{}]'.format(self['date_string'] or ''),
@@ -582,14 +584,19 @@ class HumanItem(GTDItem):
                 '#' + self.api.get_project_name(self['project_id']), 30),
                 'blue'))
         ret = ' '.join(ret)
-        return (utils.trim_too_long(self.data.get('content'), max-len(ret)-1) +
-                ' ' + ret)
+        content = self.data.get('content')
+        if oneliner:
+            max = userinput.get_terminal_size()[1]
+            content = utils.trim_too_long(content, max - len(ret) - 1)
+        if not self.is_actionable():
+            content = colored(content, attrs=['dark'])
+        return (content + ' ' + ret)
 
     def __unicode__(self):
         return self.get_short_preview()
 
     def __str__(self):
-        return self.get_short_preview().encode('utf-8')
+        return self.__unicode__().encode('utf-8')
 
 
 class HelperProjectNote(todoist.models.ProjectNote):

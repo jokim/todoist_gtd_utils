@@ -201,8 +201,23 @@ class TodoistGTD(todoist.api.TodoistAPI):
         return self._post('uploads/add', data=data, files=files)
 
     def get_somedaymaybe(self):
-        """Get list with all Someday/Maybe projects."""
+        """Get list with all Someday/Maybe projects.
+
+        :rtype: list
+        :return: A list with project objects.
+
+        """
         pr_names = self.config.get_commalist('gtd', 'someday-projects')
+        return map(self.get_projects_by_name, pr_names)
+
+    def get_targetprojects(self):
+        """Get list with all *active* projects.
+
+        :rtype: list
+        :return: A list with project objects.
+
+        """
+        pr_names = self.config.get_commalist('gtd', 'target-projects')
         return map(self.get_projects_by_name, pr_names)
 
 
@@ -264,6 +279,7 @@ class HelperProject(todoist.models.Project):
         new_order = children[len(children)/2]['item_order']
         return self.update(indent=new_parent['indent'] + 1,
                            item_order=new_order)
+        # TODO: Need to move all child projects too!
 
     def get_child_items(self, include_child_projects=False):
         """Return all items in the project."""
@@ -509,7 +525,7 @@ class HumanItem(GTDItem):
         the frontend considers the highest as 1.
 
         """
-        p = self.get('priority', 1)
+        p = self.data.get('priority', 1)
         return (4, 3, 2, 1)[p-1]
 
     def get_presentation(self):

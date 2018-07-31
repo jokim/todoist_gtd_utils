@@ -143,6 +143,12 @@ def menu_project(api, project, extra=None):
          'n': ('Create new project note', add_note),
          'cl': ('Clone project', clone_project),
          'cv': ('Convert to action', convert_to_item),
+         # TODO:
+         # 'cr': ('Create reference "box" for project', create_ref)
+         #     - include create an item with link to reference
+         #     - TODO: what system? evernote? google drive? onenote? onedrive?
+         #     ask for what to use? (i differentiate between work and personal)
+         #
          # Navigation
          'gp': ('Go to parent project', go_parent),
          'ga': ('Go to an action', go_action),

@@ -244,9 +244,18 @@ def process_gtd_projects(api):
             if not filter(lambda t: t.is_actionable(), tasks):
                 cprint("No tasks for project «{}»".format(p['name']),
                        color='red')
-            # TODO: check if ONLY actions with label @waiting - then tell to
-            # hibernate for a while
+            # TODO: more checks/warnings to add:
+            #
+            # - if ONLY actions with label @waiting left - suggest to hibernate
+            #   for a while
+            #
+            # - warn if actions are overdue, or severelly overdue!
+            #
+            # - if project hasn't been updated in over two weeks - time to
+            #   change, or hibernate?
 
+            # TODO: Skip projects if cli parameter has been set to only check
+            # projects with warnings - for a faster (daily?) review.
             menus.menu_project(api, p)
 
 

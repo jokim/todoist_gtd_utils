@@ -260,11 +260,18 @@ def process_gtd_projects(api):
         for p in parent.get_child_projects():
             tasks = p.get_child_items()
             print("")
+            # Warnings, for easier reviewing:
             if not filter(lambda t: t.is_actionable(), tasks):
                 cprint("No tasks for project «{}»".format(p['name']),
                        color='red')
+            # TODO: check if ONLY actions with label @waiting - then tell to
+            # hibernate for a while
 
             menus.menu_project(api, p)
+
+
+def ptitle(txt):
+    cprint('\n== {} =='.format(txt), attrs=['bold'])
 
 
 if __name__ == '__main__':
@@ -280,16 +287,17 @@ if __name__ == '__main__':
     cleanup_fields(api)
     api.sync()
     try:
-        cprint("\n== Processing Someday/Maybe ==", attrs=['bold'])
+        ptitle("Processing Someday/Maybe")
         print("Any projects/items that should have been active?")
         process_active_projects_in_someday(api)
         print("Any labels that should be disabled?")
         remove_labels_in_someday(api, args)
 
-        cprint("\n== Processing active projects ==", attrs=['bold'])
+        ptitle("Processing active projects")
         print("Any labels that should be enabled?")
         restore_labels_in_projects(api)
-        print("\n== GTD review ==")
+
+        ptitle("GTD review")
         process_gtd_projects(api)
         print("sync done")
     except BaseException as e:
@@ -297,4 +305,5 @@ if __name__ == '__main__':
         print(e)
         import traceback
         traceback.print_exc()
+    finally:
         api.sync()

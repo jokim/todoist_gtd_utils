@@ -17,6 +17,8 @@ Some cleanup is also included:
 
 - Unnecessary white space is removed.
 
+TODO: Add timeout for sync with todoist, as it sometimes just hangs.
+
 """
 
 from __future__ import print_function
@@ -28,21 +30,6 @@ from todoist_gtd_utils import userinput
 from todoist_gtd_utils import utils
 from todoist_gtd_utils import menus
 from todoist_gtd_utils import TodoistGTD
-
-
-def _get_child_project_ids(api, project, include_self=True):
-    """Return a list of project IDs for the children of given project."""
-    ret = set(p['id'] for p in project.get_child_projects())
-    if include_self:
-        ret.add(project['id'])
-    return ret
-
-
-def _get_items(api, project_ids, recursive=False):
-    """Return a list of IDs for all items in given projects IDs."""
-    if not isinstance(project_ids, (list, tuple)):
-        project_ids = [project_ids]
-    return api.items.all(lambda x: x['project_id'] in project_ids)
 
 
 def _cleanup_whitespace(api):
@@ -192,17 +179,10 @@ def remove_labels_in_someday(api, args):
 
 def restore_labels_in_projects(api):
     """Restore archived labels from reactivated items"""
-    # TODO: Add target projects to config!
-    target_projects = ['Personal', 'Work']
-    print("Restore labels from {}…".format(', '.join(target_projects)))
-    item_ids = set()
-    for p in target_projects:
-        proj = api.get_projects_by_name(p)
-        child_pr = _get_child_project_ids(api, proj)
-        print("Processing {} projects from {}…".format(len(child_pr), p))
-        items = _get_items(api, child_pr)
-        print("Processing {} items from {}…".format(len(items), p))
-        item_ids.update(i['id'] for i in items)
+    items = []
+    for project in api.get_targetprojects():
+        items.extend(project.get_child_items(include_child_projects=True))
+    print("Processing {} items…".format(len(items)))
 
     def get_match(note):
         if (note.startswith('gtd_utils:removed_l') or
@@ -215,6 +195,7 @@ def restore_labels_in_projects(api):
             content = content.replace('__' + l, '')
         return content.strip()
 
+    item_ids = set(i['id'] for i in items)
     notes = api.notes.all(lambda x:
                           x['item_id'] in item_ids and
                           get_match(x['content']))
@@ -244,10 +225,9 @@ def restore_labels_in_projects(api):
                     content=remove_labels(item['content'],
                                           api.get_label_name(labels)))
         api.force_commit()
-        # TODO: Verify if labels have been updated first!
+        # TODO: Verify if labels have been updated first
         for n in notes:
             n.delete()
-        api.force_commit()
 
 
 def process_gtd_projects(api):

@@ -210,8 +210,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
         pr_names = self.config.get_commalist('gtd', 'someday-projects')
         return map(self.get_projects_by_name, pr_names)
 
-    def get_active_projects(self):
-        """Get list with all *active* projects.
+    def get_targetprojects(self):
+        """Get list with all *target* projects.
+
+        Target projects are projects that contains the **active** projects.
 
         :rtype: list
         :return: A list with project objects.

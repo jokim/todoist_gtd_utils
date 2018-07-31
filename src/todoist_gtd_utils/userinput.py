@@ -394,10 +394,23 @@ def ask_multichoice(prompt, choices, default=[], category='choice',
 
         Note: Values (and keys) must be unique to be selected.
 
+    :param default:
+        Gets returned if user doesn't select anything. Doesn't care if
+        `default` is one of the choices.
+
+    :type default_value: unicode
+    :param default_value:
+        What is shown to the user as "default value". Uses `default` if this is
+        not set. Only used for presentation, not for return values.
+
+
     """
     if not isinstance(choices, dict):
         choices = dict(enumerate(choices))
     mapping = dict((unicode(v), k) for k, v in choices.iteritems())
+
+    if not default_value:
+        default_value = default
 
     _set_completer(mapping)
     while True:

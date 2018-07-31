@@ -74,9 +74,9 @@ def menu_project(api, project, extra=None):
         print('Project moved')
 
     def create_item():
-        userinput.dialog_new_item(api, project=project)
-        print("Next action created")
-        # TODO: menu for item?
+        i = userinput.dialog_new_item(api, project=project)
+        print("Next action created: {}".format(i))
+        # TODO: go to menu for item?
 
     def view_project():
         project.print_presentation()

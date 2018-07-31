@@ -505,18 +505,12 @@ class HumanItem(GTDItem):
     def get_frontend_pri(self):
         """Return priority in frontend's perspective.
 
-        The API considers 4 as the highest priority, while the frontend
-        considers that as 1.
+        The API considers 4 as the highest priority and 1 as the lowest, while
+        the frontend considers the highest as 1.
 
         """
-        p = self['priority']
-        if p == 4:
-            return 1
-        if p == 3:
-            return 2
-        if p == 2:
-            return 3
-        return 4
+        p = self.get('priority', 1)
+        return (4, 3, 2, 1)[p-1]
 
     def get_presentation(self):
         """Get details about the item, in a presentable manner.

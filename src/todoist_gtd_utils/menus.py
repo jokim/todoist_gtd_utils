@@ -98,8 +98,14 @@ def menu_project(api, project, extra=None):
         # TODO
 
     def clone_project():
+        print("Choose parent project:")
+        new = userinput.dialog_new_project(name=project['name'],
+                                           parent=project.get_parent_project())
         print("TODO")
         # TODO
+        # - copy project notes
+        # - copy child projects
+        # - copy all items (ask user per item?)
 
     def convert_to_item():
         print("TODO")

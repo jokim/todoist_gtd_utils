@@ -225,7 +225,6 @@ def restore_labels_in_projects(api):
                     content=remove_labels(item['content'],
                                           api.get_label_name(labels)))
         api.force_commit()
-        # TODO: Verify if labels have been updated first
         for n in notes:
             n.delete()
 
@@ -244,10 +243,22 @@ def process_gtd_projects(api):
             if not filter(lambda t: t.is_actionable(), tasks):
                 cprint("No tasks for project «{}»".format(p['name']),
                        color='red')
+
+            # Check if ONLY actions with label @waiting left
+            label_waiting = api.labels.all(lambda x: x['name'] == 'waiting')[0]
+            match = False
+            for item in p.get_child_items():
+                if not item.is_actionable():
+                    continue
+                if label_waiting in item.get_labels():
+                    match = True
+                    break
+
+            if not match:
+                cprint("Only waiting-fors left. How about hibernating?",
+                       color="red")
+
             # TODO: more checks/warnings to add:
-            #
-            # - if ONLY actions with label @waiting left - suggest to hibernate
-            #   for a while
             #
             # - warn if actions are overdue, or severelly overdue!
             #

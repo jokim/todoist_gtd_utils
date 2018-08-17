@@ -29,6 +29,11 @@ Add a macro to mutt, for instance when pressing "GG"::
     macro index,pager GG "<pipe-entry>less > /tmp/mutt-$USER-mail-todoist.tmp<enter><shell-escape>~/src/todoist_gtd_utils/env/bin/python ~/src/todoist_gtd_utils/bin/todoist_add_mail_item /tmp/mutt-$USER-mail-todoist.tmp<enter>"
 
 
+Testing
+-------
+
+Simply run `tox`.
+
 GTD workflow
 ------------
 

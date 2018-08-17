@@ -420,9 +420,7 @@ class GTDProject(HelperProject):
 
         """
         if not someday_project:
-            # TODO: change to use get_somedaymaybe()
-            hibernate = self.config.get_commalist('gtd', 'someday-projects')[0]
-            someday_project = self.get_projects_by_name(hibernate)
+            someday_project = self.api.get_somedaymaybe()[0]
         # TODO: validate if given someday project is according to hibernated
         # from config?
         self.move_project(someday_project)
@@ -433,7 +431,17 @@ class GTDProject(HelperProject):
         # TODO: more to do? Like, disabling labels etc?
 
 
-class GTDItem(todoist.models.Item):
+class HelperItem(todoist.models.Item):
+    """Helper methods for items.
+
+    For easier use of Todoist API.
+
+    """
+    def get_labels(self):
+        return self.data.get('labels', [])
+
+
+class GTDItem(HelperItem):
     """Add GTD functionality, and more, to tasks."""
 
     def is_due(self, previous_days=0):
@@ -441,7 +449,7 @@ class GTDItem(todoist.models.Item):
 
         :type previous_days: int
         :param previous_days:
-            Include given number of days before today to consider it "due".
+            Include given number of days *before today* to consider item "due".
 
         """
         # TODO: Verify that it's ONLY 'due_date_utc' that is used. Could
@@ -449,8 +457,18 @@ class GTDItem(todoist.models.Item):
         due = self.data['due_date_utc']
         if not due:
             return False
-        due_date = utils.parse_utc_to_datetime(self.data['due_date_utc'])
+        due_date = utils.parse_utc_to_datetime(due)
         return due_date <= (datetime.today() + timedelta(previous_days))
+
+    def is_overdue(self):
+        """Return True if task is overdue, i.e. due date has passed."""
+        # TODO: Verify that it's ONLY 'due_date_utc' that is used. Could
+        # 'date_string' be checked as well?
+        due = self.data['due_date_utc']
+        if not due:
+            return False
+        due_date = utils.parse_utc_to_datetime(due)
+        return due_date <= (datetime.today() - timedelta(1))
 
     def is_title(self):
         """Tell if task is a title, i.e. not a task that can be completed.
@@ -538,7 +556,7 @@ class HumanItem(GTDItem):
         """
         max = userinput.get_terminal_size()[1]
         ret = []
-        # TODO: make content bold
+        # TODO: make content bold?
         ret.append(self.data.get('content'))
         sub = []
         if self.data.get('date_string'):

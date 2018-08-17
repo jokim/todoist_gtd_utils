@@ -102,9 +102,10 @@ def menu_project(api, project, extra=None):
         new = userinput.dialog_new_project(name=project['name'],
                                            parent=project.get_parent_project())
         print("TODO")
+        for child in new.get_child_projects():
+            print("TODO: didn't copy {}".format(child))
         # TODO
         # - copy project notes
-        # - copy child projects
         # - copy all items (ask user per item?)
 
     def convert_to_item():

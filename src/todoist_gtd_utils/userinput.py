@@ -68,7 +68,10 @@ def dialog_new_item(api, name=None, project=None):
     if parsed_input['project']:
         project = parsed_input['project']
 
+    project_id = None
     project = ask_project(api, default=project)
+    if project:
+        project_id = project['id']
 
     labels = ask_labels(api, default=parsed_input['labels'])
     date = ask_filter('Date', dateformats, default=parsed_input['date'],
@@ -78,9 +81,44 @@ def dialog_new_item(api, name=None, project=None):
     # TODO: handle go back in menu etc?
 
     item = api.items.add(content + ' :email:.', priority=priority, indent=1,
-                         project_id=project['id'], date_string=date,
+                         project_id=project_id, date_string=date,
                          labels=labels)
     return item
+
+
+def dialog_new_project(api, name=None, parent=None):
+    """Ask for all input needed to create a new project.
+
+    :type api: TodoistGTD
+
+    :type name: unicode
+    :param name:
+        The given description of project. User gets asked if not given.
+
+    :type project: todoist.model.Project
+    :param project:
+        Sets a default project. The use case is when in a menu for a given
+        project, it makes sense to default to that project.
+
+    :rtype: todoist.model.Item
+    :return: The created item, using the Todoist API.
+
+    """
+    if not name:
+        name = get_input("New project name: ")
+    parent = ask_project(api, default=parent, prompt="Parent project")
+
+    item_order = 0
+    children = parent.get_child_projects()
+    if children:
+        pos = ask_choice_of_list("Choose position of new project:",
+                                 api.get_project_name(children))
+        item_order = children[pos]['item_order']
+
+    new = api.projects.add(name, indent=parent['indent'] + 1,
+                           color=parent['color'], item_order=item_order,
+                           parent_id=parent['id'])
+    return new
 
 
 # TODO: ask for this in function over?
@@ -92,10 +130,10 @@ def ask_description(api, default):
     return ret
 
 
-def ask_project(api, default=None):
+def ask_project(api, default=None, prompt="Project"):
     """Ask user for a valid project"""
     projects = dict((p, unicode(p['name'])) for p in api.projects.all())
-    project = ask_choice('Project', choices=projects, default=default,
+    project = ask_choice(prompt, choices=projects, default=default,
                          category="project")
     return project
 
@@ -373,7 +411,7 @@ def ask_filter(prompt, regex_choices, default=None, category='choice'):
             if re.search(r, raw):
                 return raw
         cprint("Invalid {}, please try again (? for help)"
-              .format(category), color="red")
+               .format(category), color="red")
 
 
 def ask_multichoice(prompt, choices, default=[], category='choice',

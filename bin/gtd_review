@@ -240,21 +240,11 @@ def process_gtd_projects(api):
             tasks = p.get_child_items()
             print("")
             # Warnings, for easier reviewing:
+
             if not filter(lambda t: t.is_actionable(), tasks):
                 cprint("No tasks for project «{}»".format(p['name']),
                        color='red')
-
-            # Check if ONLY actions with label @waiting left
-            label_waiting = api.labels.all(lambda x: x['name'] == 'waiting')[0]
-            match = False
-            for item in p.get_child_items():
-                if not item.is_actionable():
-                    continue
-                if label_waiting in item.get_labels():
-                    match = True
-                    break
-
-            if not match:
+            elif not filter(lambda i: not i.is_waiting(), tasks):
                 cprint("Only waiting-fors left. How about hibernating?",
                        color="red")
 

@@ -29,6 +29,7 @@ from . import utils
 from . import userinput
 from . import exceptions
 
+
 class TodoistGTD(todoist.api.TodoistAPI):
 
     def __init__(self, configfiles=None, **kwargs):
@@ -142,9 +143,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
         matches = self.get_projects_by_name(name)
         if len(matches) > 1:
             raise exceptions.DuplicateError("Several projects with name: {}"
-                                 .format(name))
+                                            .format(name))
         if len(matches) < 1:
-            raise exceptions.NotFoundError("No project with name: {}".format(name))
+            raise exceptions.NotFoundError("No project with name: {}"
+                                           .format(name))
         return matches[0]
 
     def get_projects_by_name(self, name):
@@ -490,6 +492,14 @@ class GTDItem(HelperItem):
     def is_actionable(self):
         """Return True if this is a normal, completable task."""
         return not self.is_title()
+
+    def is_waiting(self):
+        """Tell if item is active and has @waiting label"""
+        if not self.is_actionable():
+            return False
+        # TODO: Use some API for fetching this?
+        label = self.api.labels.all(lambda x: x['name'] == 'waiting')[0]
+        return label in self.get_labels()
 
     def get_project(self):
         """Return the item's project instance."""

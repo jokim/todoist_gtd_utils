@@ -10,6 +10,7 @@ import mock
 from pytest import raises
 
 import todoist_gtd_utils
+from todoist_gtd_utils import exceptions
 
 
 def get_blank_api():
@@ -92,7 +93,7 @@ def test_get_project_by_name():
     assert len(matches) == 1
     assert matches[0] == p
 
-    with raises(todoist_gtd_utils.NotFoundError):
+    with raises(exceptions.NotFoundError):
         api.get_project_by_name('notest99999')
     assert api.get_projects_by_name('notst99999') == []
 
@@ -102,7 +103,7 @@ def test_get_project_by_name_duplicate():
     p1 = api.projects.add('test3000')
     p2 = api.projects.add('test3000')
     api.commit()
-    with raises(todoist_gtd_utils.DuplicateError):
+    with raises(exceptions.DuplicateError):
         api.get_project_by_name('test3000')
 
     matches = api.get_projects_by_name('test3000')

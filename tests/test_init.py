@@ -7,11 +7,13 @@
 
 import requests
 import mock
+from pytest import raises
 
 import todoist_gtd_utils
 
 
 def get_blank_api():
+    """Return Todoist api ready for testing"""
     mock_ses = mock.create_autospec(requests.Session(), spec_set=True)
     api = todoist_gtd_utils.TodoistGTD(session=mock_ses, cache=None)
     return api
@@ -77,5 +79,33 @@ def test_filled_api():
     assert len(api.projects.all()) == len(example_data['projects'])
 
     for p in example_data['projects']:
-        todo_p = api.get_projects_by_name(p['name'])
+        todo_p = api.get_project_by_name(p['name'])
         assert len(p.get('items', ())) == len(todo_p.get_child_items())
+
+
+def test_get_project_by_name():
+    api = get_blank_api()
+    p = api.projects.add('test3000')
+    api.commit()
+    assert api.get_project_by_name('test3000') == p
+    matches = api.get_projects_by_name('test3000')
+    assert len(matches) == 1
+    assert matches[0] == p
+
+    with raises(todoist_gtd_utils.NotFoundError):
+        api.get_project_by_name('notest99999')
+    assert api.get_projects_by_name('notst99999') == []
+
+
+def test_get_project_by_name_duplicate():
+    api = get_blank_api()
+    p1 = api.projects.add('test3000')
+    p2 = api.projects.add('test3000')
+    api.commit()
+    with raises(todoist_gtd_utils.DuplicateError):
+        api.get_project_by_name('test3000')
+
+    matches = api.get_projects_by_name('test3000')
+    assert len(matches) == 2
+    assert p1 in matches
+    assert p2 in matches

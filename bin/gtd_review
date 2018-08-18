@@ -24,6 +24,7 @@ TODO: Add timeout for sync with todoist, as it sometimes just hangs.
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import datetime
 from termcolor import cprint
 
 from todoist_gtd_utils import userinput
@@ -241,19 +242,24 @@ def process_gtd_projects(api):
             print("")
             # Warnings, for easier reviewing:
 
+            # TODO: consider move these tests to GTDProject or HelperProject
             if not filter(lambda t: t.is_actionable(), tasks):
-                cprint("No tasks for project «{}»".format(p['name']),
+                cprint("No tasks in project. What's the next action?",
                        color='red')
             elif not filter(lambda i: not i.is_waiting(), tasks):
-                cprint("Only waiting-fors left. How about hibernating?",
+                cprint("Only waiting-fors left. Hibernating?",
+                       color="red")
+            if any(i.is_overdue() for i in tasks):
+                cprint("Tasks are overdue. Prioritize or delay?", color="red")
+
+            # Warn if project hasn't changed in some time:
+            limit = datetime.datetime.now() - datetime.timedelta(14)
+            if all(utils.parse_utc_to_datetime(a['event_date']) < limit
+                   for a in p.get_last_activities()):
+                cprint("Project not updated in two weeks. Reconsider?",
                        color="red")
 
             # TODO: more checks/warnings to add:
-            #
-            # - warn if actions are overdue, or severelly overdue!
-            #
-            # - if project hasn't been updated in over two weeks - time to
-            #   change, or hibernate?
 
             # TODO: Skip projects if cli parameter has been set to only check
             # projects with warnings - for a faster (daily?) review.

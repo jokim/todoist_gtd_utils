@@ -10,6 +10,8 @@ TODO:
 - Fix better config
 - todoist's own code is not optimal for my use, e.g. at script startup and some
   bugs. Create my own, lightweight client, using the REST API directly?
+- Replace use of `api.get()` to `api.get_by_id`, since that checks locally
+  first
 
 """
 
@@ -29,16 +31,16 @@ from . import userinput
 
 class TodoistGTD(todoist.api.TodoistAPI):
 
-    def __init__(self, token=None, configfiles=None):
+    def __init__(self, configfiles=None, **kwargs):
         self.config = config.Config()
         if configfiles:
             self.config.read(configfiles)
-        if not token:
-            token = self.config.get('todoist', 'api-token')
-        super(TodoistGTD, self).__init__(token=token)
+        if 'token' not in kwargs:
+            kwargs['token'] = self.config.get('todoist', 'api-token')
+        super(TodoistGTD, self).__init__(**kwargs)
 
         # Check if authenticated:
-        if token:
+        if 'token' in kwargs:
             params = {'token': self.token,
                       'sync_token': '*',
                       'resource_types': '["labels"]',

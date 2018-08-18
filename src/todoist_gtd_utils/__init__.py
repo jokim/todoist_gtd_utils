@@ -27,7 +27,7 @@ from todoist.api import SyncError
 from . import config
 from . import utils
 from . import userinput
-
+from . import exceptions
 
 class TodoistGTD(todoist.api.TodoistAPI):
 
@@ -127,38 +127,43 @@ class TodoistGTD(todoist.api.TodoistAPI):
             return id['name']
         return self.projects.all(lambda x: x['id'] == id)[0]['name'].strip()
 
-    def get_projects_by_name(self, name, raise_on_duplicate=True):
+    def get_project_by_name(self, name):
         """Find a project by its given name.
+
+        Projects with the same name will create problems here, use
+        `get_projects_by_name` instead.
+
+        :raise DuplicateError:
+            If more than one project is found with given name
+
+        :raise NotFoundError: If no project with given name is found
+
+        """
+        matches = self.get_projects_by_name(name)
+        if len(matches) > 1:
+            raise exceptions.DuplicateError("Several projects with name: {}"
+                                 .format(name))
+        if len(matches) < 1:
+            raise exceptions.NotFoundError("No project with name: {}".format(name))
+        return matches[0]
+
+    def get_projects_by_name(self, name):
+        """Find a project by its given name.
+
+        Whitespace is stripped off.
 
         :type name: str
         :param name:
             The name of the project. Must match exact, but whitespace around is
             ignored.
 
-        :type raise_on_duplicate: bool
-        :param raise_on_duplicate:
-            Set to True if you assert that only one project exist with given
-            name. If True, an exception is raised if more than one project
-            exist with given name, and a Project is returned instead of a list.
-
-        :rtype: list or todoist.models.Project
+        :rtype: list
         :return:
-            Returns one *Project* object if `raise_on_duplicate` is True,
-            otherwise a list of Project objects.
+            A list of Project objects that matches given name.
 
         """
         name = name.strip()
-        ret = []
-        for p in self.projects.all():
-            if p['name'].strip() == name:
-                ret.append(p)
-        if raise_on_duplicate:
-            if len(ret) > 1:
-                raise Exception("Several projects with name: {}".format(name))
-            if len(ret) == 0:
-                raise Exception("No project with name: {}".format(name))
-            return ret[0]
-        return ret
+        return self.projects.all(lambda p: p['name'].strip() == name)
 
     def force_commit(self):
         """Make sure a commit with Todoist is commited.
@@ -210,7 +215,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
 
         """
         pr_names = self.config.get_commalist('gtd', 'someday-projects')
-        return map(self.get_projects_by_name, pr_names)
+        return map(self.get_project_by_name, pr_names)
 
     def get_targetprojects(self):
         """Get list with all *target* projects.
@@ -222,7 +227,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
 
         """
         pr_names = self.config.get_commalist('gtd', 'target-projects')
-        return map(self.get_projects_by_name, pr_names)
+        return map(self.get_project_by_name, pr_names)
 
 
 class HelperProject(todoist.models.Project):
@@ -390,7 +395,7 @@ class GTDProject(HelperProject):
         if not parent_project:
             parent_project = self.config.get_commalist('gtd',
                                                        'target-projects')[0]
-            parent_project = self.api.get_projects_by_name(parent_project)
+            parent_project = self.api.get_project_by_name(parent_project)
         if isinstance(parent_project, int):
             parent_project = self.api.projects.get_by_id(parent_project)
         self.move_project(parent_project)
@@ -515,7 +520,7 @@ class GTDItem(HelperItem):
         if not parent_project:
             parent_project = self.config.get_commalist('gtd',
                                                        'target-projects')[0]
-            parent_project = self.api.get_projects_by_name(parent_project)
+            parent_project = self.api.get_project_by_name(parent_project)
         if isinstance(parent_project, int):
             parent_project = self.api.projects.get_by_id(parent_project)
         self.move_to_project(parent_project)
@@ -530,7 +535,7 @@ class GTDItem(HelperItem):
         """
         if not someday_project:
             hibernate = self.config.get_commalist('gtd', 'someday-projects')[0]
-            someday_project = self.get_projects_by_name(hibernate)
+            someday_project = self.get_project_by_name(hibernate)
         # TODO: validate if given someday project is according to hibernated
         # from config?
         self.move_to_project(someday_project)

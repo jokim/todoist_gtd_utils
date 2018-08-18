@@ -98,7 +98,7 @@ if __name__ == '__main__':
         api.sync()
 
     if goal:
-        parent = api.get_projects_by_name('Work')
+        parent = api.get_project_by_name('Work')
         sub_pr = parent.get_child_projects()
         # - ask for what position
         pos = ui.ask_choice_of_list("Choose position of new project:",

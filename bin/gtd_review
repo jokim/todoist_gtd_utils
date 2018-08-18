@@ -80,7 +80,7 @@ def ask_about_inactive_project(api, item, project=None):
                                         targetprojects, default=0,
                                         category='project')
             targetprojects = [targetprojects[move]]
-        new_parent = api.get_projects_by_name(targetprojects[0])
+        new_parent = api.get_project_by_name(targetprojects[0])
         if project:
             # Move the whole project
             project.activate(new_parent)
@@ -235,7 +235,7 @@ def process_gtd_projects(api):
     """
     targetprojects = api.config.get_commalist('gtd', 'target-projects')
     for t in targetprojects:
-        parent = api.get_projects_by_name(t)
+        parent = api.get_project_by_name(t)
         for p in parent.get_child_projects():
             tasks = p.get_child_items()
             print("")

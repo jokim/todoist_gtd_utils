@@ -16,6 +16,7 @@ import requests
 from termcolor import cprint, colored
 
 from .utils import trim_whitespace, frontend_priority_to_api
+from . import exceptions
 
 dateformats = ('(after |every )?(mon|tues|wednes|thurs|fri|satur|sun)day',
                '(after |every )?tomorrow',
@@ -206,13 +207,13 @@ def parse_project(api, content):
     """
     for p in re.findall('#(\w+)', content):
         try:
-            p_obj = api.get_projects_by_name(p)
-        except Exception:
-            # TODO: more granular exception
+            p_obj = api.get_project_by_name(p)
+        except exceptions.NotFoundError:
             continue
-        else:
-            content = content.replace('#' + p, '')
-            return content, p_obj
+        except exceptions.DuplicateError:
+            p_obj = api.get_projects_by_name(p)[0]
+        content = content.replace('#' + p, '')
+        return content, p_obj
     return content, None
 
 

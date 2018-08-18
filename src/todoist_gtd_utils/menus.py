@@ -35,13 +35,13 @@ def menu_project(api, project, extra=None):
 
     def activate_project():
         # TODO: check if project is already active
-        targetprojects = api.config.get_commalist('gtd', 'target-projects')
+        targetprojects = api.get_targetprojects()
         if len(targetprojects) == 1:
-            parent = api.get_projects_by_name(targetprojects[0])
+            parent = targetprojects[0]
         elif len(targetprojects) > 1:
             choice = userinput.ask_choice('Where to?', choices=targetprojects,
                                           default=0, category="project")
-            parent = api.get_projects_by_name(targetprojects[choice])
+            parent = targetprojects[choice]
         else:
             print("No target projects defined. Where to move?")
             parent = userinput.ask_project(api)
@@ -49,13 +49,13 @@ def menu_project(api, project, extra=None):
         print("Project activated")
 
     def hibernate_project():
-        hibernated = api.config.get_commalist('gtd', 'someday-projects')
+        hibernated = api.get_somedaymaybe()
         if len(hibernated) == 1:
-            parent = api.get_projects_by_name(hibernated[0])
+            parent = hibernated[0]
         elif len(hibernated) > 1:
             choice = userinput.ask_choice('Where to?', choices=hibernated,
                                           default=0, category="project")
-            parent = api.get_projects_by_name(hibernated[choice])
+            parent = hibernated[choice]
         else:
             print("No someday projects defined. Where to move?")
             parent = userinput.ask_project(api)
@@ -215,13 +215,13 @@ def menu_item(api, item, extra=None):
         item.print_note_preview()
 
     def activate_item():
-        targetprojects = api.config.get_commalist('gtd', 'target-projects')
+        targetprojects = api.get_targetprojects(self)
         if len(targetprojects) == 1:
-            parent = api.get_projects_by_name(targetprojects[0])
+            parent = targetprojects[0]
         elif len(targetprojects) > 1:
             choice = userinput.ask_choice('Where to?', choices=targetprojects,
                                           default=0, category="project")
-            parent = api.get_projects_by_name(targetprojects[choice])
+            parent = targetprojects[choice]
         else:
             print("No target projects defined. Where to move?")
             parent = userinput.ask_project(api)
@@ -229,13 +229,13 @@ def menu_item(api, item, extra=None):
         print("Item activated")
 
     def hibernate_item():
-        hibernated = api.config.get_commalist('gtd', 'someday-projects')
+        hibernated = api.get_somedaymaybe()
         if len(hibernated) == 1:
-            parent = api.get_projects_by_name(hibernated[0])
+            parent = hibernated[0]
         elif len(hibernated) > 1:
             choice = userinput.ask_choice('Where to?', choices=hibernated,
                                           default=0, category="project")
-            parent = api.get_projects_by_name(hibernated[choice])
+            parent = hibernated[choice]
         else:
             print("No someday projects defined. Where to move it?")
             parent = userinput.ask_project(api)

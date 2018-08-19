@@ -83,7 +83,7 @@ def dialog_new_item(api, name=None, project=None):
 
     item = api.items.add(content + ' :email:.', priority=priority, indent=1,
                          project_id=project_id, date_string=date,
-                         labels=labels)
+                         labels=[l['id'] for l in labels])
     return item
 
 
@@ -157,7 +157,7 @@ def ask_priority(api, default):
 
 
 def ask_labels(api, default=None):
-    all_labels = dict((l['id'], unicode(l['name']).lower()) for l in
+    all_labels = dict((l, unicode(l['name']).lower()) for l in
                       api.labels.all())
     return ask_multichoice('Labels', choices=all_labels, default=default,
                            category="labels")

@@ -17,7 +17,11 @@ Some cleanup is also included:
 
 - Unnecessary white space is removed.
 
-TODO: Add timeout for sync with todoist, as it sometimes just hangs.
+TODO:
+- Add timeout for sync with todoist, as it sometimes just hangs.
+- Clean up in the review process, by following GTD's guidelines
+- Present each project/item in one, sinlge, clean page when reviewing, for more
+  focus and less disturbance from previous text
 
 """
 

@@ -14,6 +14,9 @@ TODO:
 - If due date has passed, present in RED in item previews!
 - Shorten the item preview when in menu, since it goes over the line
 - View number of comments in item preview
+- Be able to null out dates properly.
+- Better present due dates for items - if due date is "after 3 workdays" you
+  also would like to see if when the next due is
 
 """
 

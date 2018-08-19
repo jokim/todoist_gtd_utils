@@ -15,14 +15,15 @@ TODO:
 
 """
 
-from datetime import datetime, timedelta
 import io
+import time
+from datetime import datetime, timedelta
+from requests import HTTPError
 
 from termcolor import cprint, colored
 
 import todoist
 from todoist.api import SyncError
-# TODO: move to utils, or somewhere else?
 
 from . import config
 from . import utils
@@ -175,7 +176,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
         fix the issue:
 
         """
-        attempts = 5
+        attempts = 10
         while True:
             attempts -= 1
             try:
@@ -184,7 +185,15 @@ class TodoistGTD(todoist.api.TodoistAPI):
                 if attempts > 0:
                     continue
                 raise
-            return True
+            except HTTPError as e:
+                if e.errno != 429:
+                    raise
+                print("Too many requests, waiting a few seconds…")
+                # Max 50 requests per minute, per
+                # https://developer.todoist.com/sync/v7/#limits25
+                time.sleep(2)
+            else:
+                return True
 
     def fullsync(self):
         """Force a fullsync, since `sync()` fails sometimes.

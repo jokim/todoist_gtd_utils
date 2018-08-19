@@ -541,7 +541,8 @@ class GTDItem(HelperItem):
 
     def is_actionable(self):
         """Return True if this is a normal, completable task."""
-        return not self.is_title()
+        return (not self['is_archived'] and self['is_deleted'] and not
+                self.is_title())
 
     def is_waiting(self):
         """Tell if item is active and has @waiting label"""

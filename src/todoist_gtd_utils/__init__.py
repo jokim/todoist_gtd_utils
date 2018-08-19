@@ -8,10 +8,12 @@ official GUI.
 
 TODO:
 - Fix better config
-- todoist's own code is not optimal for my use, e.g. at script startup and some
-  bugs. Create my own, lightweight client, using the REST API directly?
+- Add TLS timeouts, with retry
 - Replace use of `api.get()` to `api.get_by_id`, since that checks locally
   first
+- If due date has passed, present in RED in item previews!
+- Shorten the item preview when in menu, since it goes over the line
+- View number of comments in item preview
 
 """
 
@@ -186,12 +188,18 @@ class TodoistGTD(todoist.api.TodoistAPI):
                     continue
                 raise
             except HTTPError as e:
-                if e.errno != 429:
+                if e.errno == 429:
+                    # 429 Too Many Requests
+                    print("Too many requests, waiting a few seconds…")
+                    # Max 50 requests per minute, per
+                    # https://developer.todoist.com/sync/v7/#limits25
+                    time.sleep(2)
+                elif e.errno == 502:
+                    # 502 Server Error
+                    print("Server error, retry after a few seconds…")
+                    time.sleep(2)
+                else:
                     raise
-                print("Too many requests, waiting a few seconds…")
-                # Max 50 requests per minute, per
-                # https://developer.todoist.com/sync/v7/#limits25
-                time.sleep(2)
             except Exception as e:
                 print("Unhandled exception: {}".format(e))
                 print("type: {}".format(type(e)))

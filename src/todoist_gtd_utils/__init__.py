@@ -192,6 +192,10 @@ class TodoistGTD(todoist.api.TodoistAPI):
                 # Max 50 requests per minute, per
                 # https://developer.todoist.com/sync/v7/#limits25
                 time.sleep(2)
+            except Exception as e:
+                print("Unhandled exception: {}".format(e))
+                print("type: {}".format(type(e)))
+                print(dir(e))
             else:
                 return True
 

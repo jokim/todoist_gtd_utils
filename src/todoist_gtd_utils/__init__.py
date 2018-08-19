@@ -36,7 +36,7 @@ class TodoistGTD(todoist.api.TodoistAPI):
         self.config = config.Config()
         if configfiles:
             self.config.read(configfiles)
-        if 'token' not in kwargs:
+        if not kwargs.get('token'):
             kwargs['token'] = self.config.get('todoist', 'api-token')
         super(TodoistGTD, self).__init__(**kwargs)
 
@@ -370,6 +370,23 @@ class HelperProject(todoist.models.Project):
         pre.extend(post)
         return ' '.join(pre)
 
+    def get_last_activities(self):
+        """Get last activity in project, including items and notes"""
+        # project's log
+        data = self.api.activity.get(object_type='project',
+                                     object_id=self['id'])
+        # items log
+        data.extend(self.api.activity.get(parent_object_id=self['id']))
+        # TODO: sort
+        return data
+
+    def get_last_completed(self):
+        """Return date for when last item was completed in this project."""
+        last = self.api.activity.get(parent_project_id=self['id'],
+                                     object_type='item',
+                                     event_type='completed', limit=1)
+        return last['event_date']
+
     def __unicode__(self):
         return self.get_short_preview()
 
@@ -448,6 +465,15 @@ class HelperItem(todoist.models.Item):
     """
     def get_labels(self):
         return self.data.get('labels', [])
+
+    def get_last_activities(self):
+        """Get last activity in item, including notes"""
+        # item's log
+        data = self.api.activity.get(object_type='item', object_id=self['id'])
+        # notes log
+        data.extend(self.api.activity.get(parent_item_id=self['id']))
+        # TODO: sort
+        return data
 
 
 class GTDItem(HelperItem):

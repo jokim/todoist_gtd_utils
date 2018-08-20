@@ -17,6 +17,9 @@ TODO:
 - Be able to null out dates properly.
 - Better present due dates for items - if due date is "after 3 workdays" you
   also would like to see if when the next due is
+- If item is Archived or Deleted: view it in str()
+- By config: create mapping from labels. If one label is set, another one
+  should also be set. Exapmle: when a colleague is labeled, also label @office
 
 """
 
@@ -667,8 +670,12 @@ class HumanItem(GTDItem):
         """
         ret = []
         if self.data.get('date_string'):
+            if self.is_overdue():
+                color = 'red'
+            else:
+                color = 'magenta'
             ret.append(colored('[{}]'.format(self['date_string'] or ''),
-                               'magenta', attrs=['bold']))
+                               color, attrs=['bold']))
         pri = self.get_frontend_pri()
         if pri < 4:
             ret.append(colored('!!{}'.format(pri), 'red', attrs=['bold']))

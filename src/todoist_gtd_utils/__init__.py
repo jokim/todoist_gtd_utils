@@ -11,10 +11,10 @@ TODO:
 - Add TLS timeouts, with retry
 - Replace use of `api.get()` to `api.get_by_id`, since that checks locally
   first
-- If due date has passed, present in RED in item previews!
+- BUG: Time added is not converted to UTC, so becomes -2 hours when stored
+- Make due dates more human readable, e.g. "tomorrow" instead of full date
 - Shorten the item preview when in menu, since it goes over the line
 - View number of comments in item preview
-- Be able to null out dates properly.
 - Better present due dates for items - if due date is "after 3 workdays" you
   also would like to see if when the next due is
 - If item is Archived or Deleted: view it in str()
@@ -544,8 +544,9 @@ class GTDItem(HelperItem):
 
     def is_actionable(self):
         """Return True if this is a normal, completable task."""
-        return (not self['is_archived'] and self['is_deleted'] and not
-                self.is_title())
+        return (not self.data.get('is_archived') and
+                not self.data.get('is_deleted') and
+                not self.is_title())
 
     def is_waiting(self):
         """Tell if item is active and has @waiting label"""
@@ -669,12 +670,18 @@ class HumanItem(GTDItem):
 
         """
         ret = []
-        if self.data.get('date_string'):
+        if self.data.get('is_deleted'):
+            ret.append('DELETED:')
+        elif self.data.get('is_archived'):
+            ret.append('ARCHIVED:')
+
+        if self.data.get('due_date_utc'):
             if self.is_overdue():
                 color = 'red'
             else:
                 color = 'magenta'
-            ret.append(colored('[{}]'.format(self['date_string'] or ''),
+            ret.append(colored('[{}]'.format(self['due_date_utc'] or
+                                             self['date_string'] or ''),
                                color, attrs=['bold']))
         pri = self.get_frontend_pri()
         if pri < 4:

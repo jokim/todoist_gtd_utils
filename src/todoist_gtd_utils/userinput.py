@@ -220,9 +220,8 @@ def parse_project(api, content):
 def parse_labels(api, content):
     """Return labels found, and remove from content"""
     found_labels = []
-    content = content.lower()
     for label in api.labels.all():
-        labelname = '@{}'.format(label['name'].lower())
+        labelname = '@{}'.format(label['name'])
         if labelname in content:
             found_labels.append(label)
             content = content.replace(labelname, '')

@@ -126,7 +126,7 @@ if __name__ == '__main__':
     # Add file attachments, if given in mail
     for a_type, a_name, a_content in mail.get_attachments():
         print("File: {} ({}) ({} bytes)".format(a_name, a_type,
-                                                len(a_content)))
+                                                len(a_content or ())))
         if ui.ask_confirmation("Want to upload/save this attachment?"):
             resp = api.upload_add_string(a_content, a_name)
             if resp['upload_state'] != 'completed':

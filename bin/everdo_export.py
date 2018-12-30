@@ -86,7 +86,6 @@ def add_active_projects(edo, api):
 
         for item in t.get_child_items():
             add_item(edo, api, item, parent=None)
-            pass
             added_standalone_items += 1
 
     print("Added %d active projects, with %d items" % (added_projects,
@@ -102,33 +101,39 @@ def add_item(edo, api, item, list_type=None, parent=None):
     #   comment?
     completed_on = due_date = None
 
-    if list_type is None:
+    if not list_type:
         list_type = 'a'
         if item.is_waiting():
             list_type = 'w'
-        if item['is_archived']:
-            list_type = 'r'
-            completed_on = int(time.time())  # TODO: use item['date_completed']
-        if item['due_date_utc']:
-            date = utils.parse_utc_to_datetime(item['due_date_utc'])
-            due_date = everdo.datetime2stamp(date)
-        if item['date_string'] and not item['due_date_utc']:
-            print("WARN: due date mismatch?")
-            print(" due_date_utc: %s" % item['due_date_utc'])
-            print(" date_string: %s" % item['date_string'])
-            print("Okay to only care about 'due_date_utc'?")
-            print()
+    # TODO: verify if list_type is set correctly
+    if item['is_archived'] or item['date_completed']:
+        list_type = 'r'
+        completed_on = int(time.time())
+        if 'date_completed' in item.data:
+            completed_on = everdo.duedateutc2stamp(item['date_completed'])
+    if item['due_date_utc']:
+        date = utils.parse_utc_to_datetime(item['due_date_utc'])
+        due_date = everdo.datetime2stamp(date)
+    if item['date_string'] and not item['due_date_utc']:
+        print("WARN: due date mismatch?")
+        print(" due_date_utc: %s" % item['due_date_utc'])
+        print(" date_string: %s" % item['date_string'])
+        print("Okay to only care about 'due_date_utc'?")
+        print()
 
-        tags = [edo.get_eid(l) for l in item['labels']]
+    tags = [edo.get_eid(l) for l in item['labels']]
 
-        # TODO:
-        # - add api.notes.all for item to note? summary? ask?
-        #
-        # TODO: Should handle item.is_title(), but don't know where to put it
+    # TODO:
+    # - add api.notes.all for item to note? summary? ask?
+    #
+    # TODO: Should handle item.is_title(), but don't know where to put it
 
     # TODO: Support converting date_added and date_completed
-    ret = everdo.Everdo_Action(parent, list_type, item['content'],
-                               completed_on=completed_on, due_date=due_date,
+    ret = everdo.Everdo_Action(parent,
+                               list_type=list_type,
+                               title=item['content'],
+                               completed_on=completed_on,
+                               due_date=due_date,
                                tags=tags)
     edo.add_item(ret, item)
     return ret

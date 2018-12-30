@@ -54,7 +54,7 @@ def add_inbox(edo, api):
     i = 0
     p = api.get_project_by_name('Inbox')
     for item in p.get_child_items():
-        add_item(edo, api, item)
+        add_item(edo, api, item, list_type='i')
         i += 1
     print("Added %d items from Inbox" % i)
 
@@ -66,7 +66,8 @@ def add_active_projects(edo, api):
     for t in api.get_targetprojects():
         # The target projects are my "areas" in Everdo (first guess)
         area = everdo.Everdo_Tag('a', t['name'])
-        edo.add_tag(area, t)
+        # edo.add_tag(area, t)
+        edo.tags.append(area)
 
         for p in t.get_child_projects():
             if p['is_deleted']:
@@ -76,7 +77,7 @@ def add_active_projects(edo, api):
                 completed_on = int(time.time())
             eproject = everdo.Everdo_Project(
                     'a', p['name'], is_focused=p['is_favorite'],
-                    completed_on=completed_on)
+                    completed_on=completed_on, tags=[area.data['id']])
             edo.add_item(eproject, p)
             added_projects += 1
 
@@ -105,12 +106,17 @@ def add_item(edo, api, item, list_type=None, parent=None):
         list_type = 'a'
         if item.is_waiting():
             list_type = 'w'
-    # TODO: verify if list_type is set correctly
+    # TODO: verify if list_type gets set correctly
+
     if item['is_archived'] or item['date_completed']:
-        list_type = 'r'
+        if not list_type:
+            list_type = 'r'
         completed_on = int(time.time())
         if 'date_completed' in item.data:
             completed_on = everdo.duedateutc2stamp(item['date_completed'])
+    created_on = int(time.time())
+    if item['date_added']:
+        created_on = everdo.duedateutc2stamp(item['date_added'])
     if item['due_date_utc']:
         date = utils.parse_utc_to_datetime(item['due_date_utc'])
         due_date = everdo.datetime2stamp(date)
@@ -128,11 +134,11 @@ def add_item(edo, api, item, list_type=None, parent=None):
     #
     # TODO: Should handle item.is_title(), but don't know where to put it
 
-    # TODO: Support converting date_added and date_completed
     ret = everdo.Everdo_Action(parent,
                                list_type=list_type,
                                title=item['content'],
                                completed_on=completed_on,
+                               created_on=created_on,
                                due_date=due_date,
                                tags=tags)
     edo.add_item(ret, item)

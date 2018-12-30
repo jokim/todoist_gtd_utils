@@ -9,31 +9,31 @@ See https://forum.everdo.net/t/import-data-format/106/3 for its import data
 format. Example on file::
 
     "items": [
-    {
-        "id": "BD651DDD391145F9B78C2980B2D547F7",
-        "type": "n",
-        "list": "a",
-        "note": "Everdo is not a note-taking app.\nUse notes…",
-        "completed_on": null,
-        "parent_id": "297CC45E929D4B30A71EB783F53B9119",
-        "title": "Don't try to put the whole world's knowledge into notes",
-        "created_on": 1514329200,
-        "is_focused": 0,
-        "energy": null,
-        "time": null,
-        "due_date": null,
-        "start_date": null,
-        "schedule": null,
-        "recurrent_task_id": "",
-        "contact_id": "",
-        "tags": [],
-        "position_child": 5,
-        "position_parent": null,
-        "position_focus": null,
-        "position_global": null,
-        "repeated_on": null
-    },
-    ...
+        {
+            "id": "BD651DDD391145F9B78C2980B2D547F7",
+            "type": "n",
+            "list": "a",
+            "note": "Everdo is not a note-taking app.\nUse notes…",
+            "completed_on": null,
+            "parent_id": "297CC45E929D4B30A71EB783F53B9119",
+            "title": "Don't try to put the whole world's knowledge into notes",
+            "created_on": 1514329200,
+            "is_focused": 0,
+            "energy": null,
+            "time": null,
+            "due_date": null,
+            "start_date": null,
+            "schedule": null,
+            "recurrent_task_id": "",
+            "contact_id": "",
+            "tags": [],
+            "position_child": 5,
+            "position_parent": null,
+            "position_focus": null,
+            "position_global": null,
+            "repeated_on": null
+        },
+        ...
     ],
     "tags": [
         {
@@ -60,6 +60,17 @@ import json
 import uuid
 
 
+def gen_uuid(self):
+    """ Create an UUID4 as Everdo wants it.
+
+    «Those are GUIDs. You can create your own random UUID-4. Make sure it’s
+    an uppercase string without dashes. When referring to another item,
+    make sure it really exists.»
+
+    """
+    return uuid.uuid4().hex.upper()
+
+
 class Everdo_File(object):
     def __init__(self):
         self.items = []
@@ -72,6 +83,59 @@ class Everdo_File(object):
                   'tags': self.tags,
                   }
         json.dump(output, fp, ensure_ascii=False, indent=4)
+
+
+class Everdo_Tag(object):
+    """A tag in the Everdo file format"""
+
+    tag_types = (
+        "c",  # contact
+        "a",  # area
+        "l",  # label
+        # TODO; others?
+    )
+
+    def __init__(self,
+                 tag_type,
+                 title,
+                 created_on,
+                 tag_type_ts=None,
+                 title_ts=None,
+                 color=None,
+                 color_ts=None,
+                 changed_ts=None,
+                 removed_ts=None):
+        """ Create tag.
+
+        :param tag_type:
+            What kind of tag this is, e.g. contact, label or area. See
+            `self.tag_types` for valid types.
+
+        :param title: Tags title.
+
+        :type created_on: str
+        :param created_on:
+            Creation date. Format: UNIX timestamp - seconds since UNIX epoch.
+            The timestamp’s time must be set to 00:00:00.
+
+        TODO: What's the *_ts parameters?
+
+        """
+        assert tag_type in self.tag_types, "Invalid tag type"
+
+        self.data = {
+                'id': gen_uuid(),
+                'title': title,
+                'title_ts': title_ts,
+                'color': color,
+                'color_ts': color_ts,
+                'type': tag_type,
+                'type_ts': tag_type_ts,
+                'created_on': created_on,
+                'changed_ts': changed_ts,
+                'removed_ts': removed_ts,
+                }
+        # Add positions?
 
 
 class Everdo_Item(object):
@@ -177,7 +241,7 @@ class Everdo_Item(object):
         assert list_type in self.list_types, "Invalid list type"
 
         self.data = {
-                'id': self.gen_uuid(),
+                'id': gen_uuid(),
                 'list': list_type,
                 'title': title,
                 'created_on': created_on,
@@ -194,16 +258,6 @@ class Everdo_Item(object):
                 'repeated_on': repeated_on,
                 }
         # Add positions?
-
-    def gen_uuid(self):
-        """
-
-        Those are GUIDs. You can create your own random UUID-4. Make sure it’s
-        an uppercase string without dashes. When referring to another item,
-        make sure it really exists.
-
-        """
-        return uuid.uuid4().hex.upper()
 
 
 class Everdo_Action(Everdo_Item):

@@ -62,6 +62,8 @@ import json
 import time
 import uuid
 
+from . import utils
+
 
 def gen_uuid():
     """ Create an UUID4 as Everdo wants it.
@@ -89,6 +91,11 @@ def encode(data):
     if isinstance(data, unicode):
         return data.encode('utf-8')
     return data
+
+
+def duedateutc2stamp(dat):
+    """Parse date from Todoists `due_date_utc` to UNIX timestamp"""
+    return datetime2stamp(utils.parse_utc_to_datetime(dat))
 
 
 def datetime2stamp(dat):
@@ -206,7 +213,7 @@ class Everdo_Item(object):
                  due_date=None,
                  recurrent_task_id=None,
                  contact_id=None,
-                 note=None,
+                 note="",
                  tags=(),
                  repeated_on=None,
                  positions=None):

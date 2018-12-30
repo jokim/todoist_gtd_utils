@@ -221,7 +221,6 @@ class TodoistGTD(todoist.api.TodoistAPI):
         You could instead just remove local cache files.
 
         """
-        self.sync()
         self.reset_state()
         self.sync()
 

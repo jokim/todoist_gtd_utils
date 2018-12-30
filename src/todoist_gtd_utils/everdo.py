@@ -56,6 +56,8 @@ format. Example on file::
 
 from __future__ import unicode_literals
 
+import calendar
+import datetime
 import json
 import time
 import uuid
@@ -72,6 +74,30 @@ def gen_uuid():
     return uuid.uuid4().hex.upper()
 
 
+def encode(data):
+    """Encode unicode to utf8 recursively
+
+    (Yes, switching to py3 would be easier…)
+
+    """
+    if isinstance(data, (Everdo_Tag, Everdo_Item)):
+        return encode(data.data)
+    if isinstance(data, dict):
+        return dict((k, encode(v)) for k, v in data.iteritems())
+    if isinstance(data, (list, tuple)):
+        return tuple(encode(i) for i in data)
+    if isinstance(data, unicode):
+        return data.encode('utf-8')
+    return data
+
+
+def datetime2stamp(dat):
+    """Note: only the date, not time, included!"""
+    if isinstance(dat, datetime.datetime):
+        dat = dat.date()
+    return calendar.timegm(dat.timetuple())
+
+
 class Everdo_File(object):
     def __init__(self):
         self.items = []
@@ -79,8 +105,8 @@ class Everdo_File(object):
         self.tags = []
 
     def export(self, fp):
-        output = {'items': self.items,
-                  'tags': self.tags,
+        output = {'items': encode(self.items),
+                  'tags': encode(self.tags),
                   }
         json.dump(output, fp, ensure_ascii=False, indent=4)
 
@@ -242,7 +268,7 @@ class Everdo_Item(object):
             - global: position in a the list of all items
 
         """
-        assert list_type in self.list_types, "Invalid list type"
+        assert list_type in self.list_types, "Bad list type: %s" % list_type
 
         if not created_on:
             created_on = int(time.time())
@@ -277,7 +303,7 @@ class Everdo_Action(Everdo_Item):
             The parent project for this action. Can be None, for standalone.
 
         """
-        super(Everdo_Action, self).__init__(self, *args, **kwargs)
+        super(Everdo_Action, self).__init__(*args, **kwargs)
         if 'type' not in self.data:
             self.data['type'] = 'a'
         if parent:
@@ -286,7 +312,7 @@ class Everdo_Action(Everdo_Item):
 
 class Everdo_Project(Everdo_Item):
     def __init__(self, *args, **kwargs):
-        super(Everdo_Action, self).__init__(self, *args, **kwargs)
+        super(Everdo_Project, self).__init__(*args, **kwargs)
         if 'type' not in self.data:
             self.data['type'] = 'p'
 
@@ -301,7 +327,7 @@ class Everdo_Note(Everdo_Item):
             standalone items.
 
         """
-        super(Everdo_Action, self).__init__(self, *args, **kwargs)
+        super(Everdo_Note, self).__init__(*args, **kwargs)
         if 'type' not in self.data:
             self.data['type'] = 'n'
         if parent:
@@ -310,6 +336,6 @@ class Everdo_Note(Everdo_Item):
 
 class Everdo_Notebook(Everdo_Item):
     def __init__(self, *args, **kwargs):
-        super(Everdo_Action, self).__init__(self, *args, **kwargs)
+        super(Everdo_Notebook, self).__init__(*args, **kwargs)
         if 'type' not in self.data:
             self.data['type'] = 'l'

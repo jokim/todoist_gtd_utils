@@ -36,6 +36,7 @@ from todoist_gtd_utils import utils
 
 
 def add_tags(edo, api):
+    i = 0
     for label in api.labels.all():
         tag_type = 'l'
         title = label['name']
@@ -45,15 +46,23 @@ def add_tags(edo, api):
             # Everdo handles Contexts somewhat special:
             title = '@' + title
         edo.tags.append(everdo.Everdo_Tag(tag_type, title))
+        i += 1
+    print("Added %d tags" % i)
 
 
 def add_inbox(edo, api):
+    i = 0
     p = api.get_project_by_name('Inbox')
     for item in p.get_child_items():
         add_item(edo, api, item)
+        i += 1
+    print("Added %d items from Inbox" % i)
 
 
 def add_active_projects(edo, api):
+    added_projects = 0
+    added_items = 0
+    added_standalone_items = 0
     for t in api.get_targetprojects():
         # The target projects are my "areas" in Everdo (first guess)
         area = everdo.Everdo_Tag('a', t['name'])
@@ -65,22 +74,28 @@ def add_active_projects(edo, api):
             completed_on = None
             if p['is_archived']:
                 completed_on = int(time.time())
-
-            # TODO: check p.is_hibernated()
             eproject = everdo.Everdo_Project(
                     'a', p['name'], is_focused=p['is_favorite'],
                     completed_on=completed_on)
             edo.items.append(eproject)
+            added_projects += 1
 
             for item in p.get_child_items():
                 add_item(edo, api, item, parent=eproject)
+                added_items += 1
 
-        # todo: standalone actions:
-        for p in t.get_child_items():
+        for item in t.get_child_items():
+            add_item(edo, api, item, parent=None)
             pass
+            added_standalone_items += 1
+
+    print("Added %d active projects, with %d items" % (added_projects,
+                                                       added_items))
+    print("Added %d standalone items" % added_standalone_items)
 
 
 def add_item(edo, api, item, list_type=None, parent=None):
+    """Add an action/item (not project)"""
     # TODO: add policies
     # - Someday?
     # - If item is only a comment, include it in the projects
@@ -146,6 +161,8 @@ def main():
     add_someday(edo, api)
     # TODO: more?
     edo.export(args.out)
+    print("Exported %d items and %d tags" % (len(edo.items), len(edo.tags)))
+    args.out.close()
 
 
 if __name__ == '__main__':

@@ -57,10 +57,11 @@ format. Example on file::
 from __future__ import unicode_literals
 
 import json
+import time
 import uuid
 
 
-def gen_uuid(self):
+def gen_uuid():
     """ Create an UUID4 as Everdo wants it.
 
     «Those are GUIDs. You can create your own random UUID-4. Make sure it’s
@@ -77,8 +78,7 @@ class Everdo_File(object):
         # TODO: what more?
         self.tags = []
 
-    def export(self, file):
-        fp = open(file, 'w')
+    def export(self, fp):
         output = {'items': self.items,
                   'tags': self.tags,
                   }
@@ -98,7 +98,7 @@ class Everdo_Tag(object):
     def __init__(self,
                  tag_type,
                  title,
-                 created_on,
+                 created_on=None,
                  tag_type_ts=None,
                  title_ts=None,
                  color=None,
@@ -122,6 +122,9 @@ class Everdo_Tag(object):
 
         """
         assert tag_type in self.tag_types, "Invalid tag type"
+
+        if not created_on:
+            created_on = int(time.time())
 
         self.data = {
                 'id': gen_uuid(),
@@ -154,7 +157,7 @@ class Everdo_Item(object):
     def __init__(self,
                  list_type,
                  title,
-                 created_on,
+                 created_on=None,
                  is_focused=False,
                  start_date=None,
                  schedule=None,
@@ -164,6 +167,7 @@ class Everdo_Item(object):
                  due_date=None,
                  recurrent_task_id=None,
                  contact_id=None,
+                 note=None,
                  tags=(),
                  repeated_on=None,
                  positions=None):
@@ -240,6 +244,9 @@ class Everdo_Item(object):
         """
         assert list_type in self.list_types, "Invalid list type"
 
+        if not created_on:
+            created_on = int(time.time())
+
         self.data = {
                 'id': gen_uuid(),
                 'list': list_type,
@@ -256,6 +263,7 @@ class Everdo_Item(object):
                 'contact_id': contact_id,
                 'tags': tags,
                 'repeated_on': repeated_on,
+                'note': note,
                 }
         # Add positions?
 

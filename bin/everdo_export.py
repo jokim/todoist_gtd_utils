@@ -45,7 +45,7 @@ def add_tags(edo, api):
         if label['color'] == 0:
             # Everdo handles Contexts somewhat special:
             title = '@' + title
-        edo.tags.append(everdo.Everdo_Tag(tag_type, title))
+        edo.add_tag(everdo.Everdo_Tag(tag_type, title), label)
         i += 1
     print("Added %d tags" % i)
 
@@ -66,7 +66,7 @@ def add_active_projects(edo, api):
     for t in api.get_targetprojects():
         # The target projects are my "areas" in Everdo (first guess)
         area = everdo.Everdo_Tag('a', t['name'])
-        edo.tags.append(area)
+        edo.add_tag(area, t)
 
         for p in t.get_child_projects():
             if p['is_deleted']:
@@ -77,7 +77,7 @@ def add_active_projects(edo, api):
             eproject = everdo.Everdo_Project(
                     'a', p['name'], is_focused=p['is_favorite'],
                     completed_on=completed_on)
-            edo.items.append(eproject)
+            edo.add_item(eproject, p)
             added_projects += 1
 
             for item in p.get_child_items():
@@ -119,16 +119,18 @@ def add_item(edo, api, item, list_type=None, parent=None):
             print("Okay to only care about 'due_date_utc'?")
             print()
 
+        tags = [edo.get_eid(l) for l in item['labels']]
+
         # TODO:
-        # - add item['labels'] to tags.append()
         # - add api.notes.all for item to note? summary? ask?
         #
         # TODO: Should handle item.is_title(), but don't know where to put it
 
     # TODO: Support converting date_added and date_completed
     ret = everdo.Everdo_Action(parent, list_type, item['content'],
-                               completed_on=completed_on, due_date=due_date)
-    edo.items.append(ret)
+                               completed_on=completed_on, due_date=due_date,
+                               tags=tags)
+    edo.add_item(ret, item)
     return ret
 
 

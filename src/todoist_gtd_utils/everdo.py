@@ -103,12 +103,25 @@ class Everdo_File(object):
         self.items = []
         # TODO: what more?
         self.tags = []
+        # Map from Todoist to Everdo IDs
+        self.todoist2everdo = {}
 
     def export(self, fp):
         output = {'items': encode(self.items),
                   'tags': encode(self.tags),
                   }
         json.dump(output, fp, ensure_ascii=False, indent=4)
+
+    def add_tag(self, etag, tlabel):
+        self.tags.append(etag)
+        self.todoist2everdo[tlabel['id']] = etag.data['id']
+
+    def add_item(self, eitem, titem):
+        self.items.append(eitem)
+        self.todoist2everdo[titem['id']] = eitem.data['id']
+
+    def get_eid(self, t_id):
+        return self.todoist2everdo[t_id]
 
 
 class Everdo_Tag(object):

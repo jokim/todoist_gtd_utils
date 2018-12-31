@@ -103,7 +103,6 @@ def add_active_projects(edo, api):
 def get_inactive_labels(item):
     ret = set()
     for match in re.findall('__[a-zA-ZæøåÆØÅ]+', item['content']):
-        print("Found match: {}".format(match))
         lname = _escape_inactive_label(match)
         try:
             ret.add(item.api.get_label_id(lname))
@@ -111,10 +110,7 @@ def get_inactive_labels(item):
             # ignore missing labels
             # print("Not found label: {}".format(e))
             continue
-        print("Old content: {}".format(item['content']))
         item['content'] = item['content'].replace(match, '').strip()
-        print("New content: {}".format(item['content']))
-    print("Found inactive labels: {}".format(ret))
     return ret
 
 

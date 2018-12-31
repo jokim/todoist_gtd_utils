@@ -3,6 +3,9 @@
 
 """ Output Todoist data to JSON file for Everdo.
 
+TODO: Hella refactoring needed, if it supposed to be usable by anyone else, and
+even me after three days!
+
 See https://everdo.net for the Everdo application.
 
 See https://forum.everdo.net/t/import-data-format/106/3 for data format.
@@ -122,6 +125,70 @@ def _escape_inactive_label(labelname):
     return labelname
 
 
+def parse_datestring_to_schedule(datestring):
+    """Convert Todoists datestring to Everdo's schedule obejct.
+
+    Some scenarios needs to be handled manually. Some mismatches:
+
+    - Everdo doesn't support time, only dates
+
+    - Workdays are handled as "days" - just me being lazy…
+
+    """
+    datestring = datestring.lower()
+    es = everdo.Everdo_Schedule
+    if ('every' not in datestring) and ('after' not in datestring):
+        # Not repeatable
+        return
+    m = re.match(r'(every|after)!? (?P<amount>\d+) (?P<unit>workday|day|week|'
+                 r'month|year)s?( (at )?\d\d:\d\d)?$', datestring)
+    if m:
+        amount = int(m.group('amount'))
+        unit = m.group('unit')
+        daysOfWeek = None
+        typ = 'Daily'
+        if unit == 'day':
+            typ = 'Daily'
+        elif unit == 'week':
+            typ = 'Weekly'
+        elif unit == 'month':
+            typ = 'Monthly'
+        elif unit == 'year':
+            typ = 'Yearly'
+        elif unit == 'workday':
+            typ = 'Weekly'
+            amount = 1
+            daysOfWeek = [1, 2, 3, 4, 5]
+        return es(typ, period=amount, daysOfWeek=daysOfWeek)
+
+    m = re.match(r'every!? (?P<day>mon|tue|wed|thu|fri|sat|sun|monday|'
+                 r'tuesday|wednesday|thursday|friday|saturday|sunday)'
+                 r'( (at )?\d\d:\d\d)?$', datestring)
+    if m:
+        daysOfWeek = []
+        day = m.group('day')
+        if day in ('mon', 'monday'):
+            daysOfWeek = [1]
+        elif day in ('tue', 'tuesday'):
+            daysOfWeek = [2]
+        elif day in ('wed', 'wednesday'):
+            daysOfWeek = [3]
+        elif day in ('thu', 'thursday'):
+            daysOfWeek = [4]
+        elif day in ('fri', 'friday'):
+            daysOfWeek = [5]
+        elif day in ('sat', 'saturday'):
+            daysOfWeek = [6]
+        elif day in ('sun', 'sunday'):
+            daysOfWeek = [7]
+        else:
+            raise Exception("Invalid day '{}' in: {}".format(day, datestring))
+        return es('Weekly', period=1, daysOfWeek=daysOfWeek)
+
+    # Too lazy to add more, and not any time left
+    raise Exception("Unhandled date_string: {}".format(datestring))
+
+
 def add_item(edo, api, item, list_type=None, parent=None,
              everdo_cls=everdo.Everdo_Action):
     """Add an action/item/note (not project)"""
@@ -144,14 +211,13 @@ def add_item(edo, api, item, list_type=None, parent=None,
     if item['due_date_utc']:
         date = utils.parse_utc_to_datetime(item['due_date_utc'])
         due_date = everdo.datetime2stamp(date)
-    if item['date_string'] and not item['due_date_utc']:
-        print("WARN: due date mismatch?")
-        print(" due_date_utc: %s" % item['due_date_utc'])
-        print(" date_string: %s" % item['date_string'])
-        print("Okay to only care about 'due_date_utc'?")
-        print()
-
-    # TODO: if date_string startswith (every or after): use schedule!
+    schedule = None
+    if item['date_string']:
+        try:
+            schedule = parse_datestring_to_schedule(item['date_string'])
+        except Exception:
+            print("WARN: Add schedule manually for {}. Datestring: {}"
+                  .format(item['content'][:100], item['date_string']))
 
     tags = [edo.get_eid(l) for l in item['labels']]
     tags.extend(edo.get_eid(l) for l in get_inactive_labels(item))
@@ -161,6 +227,7 @@ def add_item(edo, api, item, list_type=None, parent=None,
                      completed_on=completed_on,
                      created_on=created_on,
                      due_date=due_date,
+                     schedule=schedule,
                      tags=tags)
     edo.add_item(ret, item)
     return ret
@@ -182,9 +249,6 @@ def add_someday(edo, api):
                     completed_on=completed_on)
             edo.add_item(eproject, p)
             added_projects += 1
-
-            # TODO: if the project has a due date, move it to scheduled
-            # instead? Not sure if that is
 
             for item in p.get_child_items():
                 if item['is_deleted']:

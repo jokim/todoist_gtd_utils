@@ -82,6 +82,11 @@ def add_active_projects(edo, api):
             added_projects += 1
 
             for item in p.get_child_items():
+                if item['is_deleted']:
+                    continue
+                if item.is_title():
+                    eproject.data['note'] += '\n' + item['content']
+                    continue
                 add_item(edo, api, item, parent=eproject)
                 added_items += 1
 
@@ -128,12 +133,7 @@ def add_item(edo, api, item, list_type=None, parent=None):
         print()
 
     tags = [edo.get_eid(l) for l in item['labels']]
-
-    # TODO:
-    # - add api.notes.all for item to note? summary? ask?
-    #
-    # TODO: Should handle item.is_title(), but don't know where to put it
-
+    # TODO: more variables to include?
     ret = everdo.Everdo_Action(parent,
                                list_type=list_type,
                                title=item['content'],
@@ -146,9 +146,60 @@ def add_item(edo, api, item, list_type=None, parent=None):
 
 
 def add_someday(edo, api):
-    # TODO
-    for p in api.get_somedaymaybe():
-        pass
+    added_projects = 0
+    added_items = 0
+    added_standalone_items = 0
+    for t in api.get_somedaymaybe():
+        for p in t.get_child_projects():
+            if p['is_deleted']:
+                continue
+            completed_on = None
+            if p['is_archived']:
+                completed_on = int(time.time())
+            eproject = everdo.Everdo_Project(
+                    'm', p['name'], is_focused=p['is_favorite'],
+                    completed_on=completed_on)
+            edo.add_item(eproject, p)
+            added_projects += 1
+
+            for item in p.get_child_items():
+                if item['is_deleted']:
+                    continue
+                if item.is_title():
+                    eproject.data['note'] += '\n' + item['content']
+                    continue
+                add_item(edo, api, item, parent=eproject)
+                added_items += 1
+
+        for item in t.get_child_items():
+            add_item(edo, api, item, parent=None, list_type='m')
+            added_standalone_items += 1
+
+    print("Added %d someday projects, with %d items" % (added_projects,
+                                                        added_items))
+    print("Added %d standalone someday items" % added_standalone_items)
+
+
+def add_notes(edo, api):
+    i = 0
+    for note in api.notes.all():
+        if note['is_deleted']:
+            continue
+        try:
+            eitem = edo.get_eitem(note['item_id'])
+        except KeyError:
+            print("Can't find item id %s for note: %s" % (note['item_id'],
+                                                          note['content']))
+            continue
+        eitem.data['note'] += '\n' + note['content']
+        i += 1
+        # TODO: file attachments
+        if note['file_attachment']:
+            for k in ('file_url', 'url'):
+                url = note['file_attachment'].get(k)
+                if url:
+                    eitem.data['note'] += '\n' + url
+    print("Added %d notes" % i)
 
 
 def main():
@@ -172,6 +223,7 @@ def main():
     add_inbox(edo, api)
     add_active_projects(edo, api)
     add_someday(edo, api)
+    add_notes(edo, api)
     # TODO: more?
     edo.export(args.out)
     print("Exported %d items and %d tags" % (len(edo.items), len(edo.tags)))

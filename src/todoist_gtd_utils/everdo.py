@@ -51,6 +51,9 @@ format. Example on file::
         ...
     ],
 
+TODO:
+
+- What is the *_ts variables?
 
 """
 
@@ -112,6 +115,8 @@ class Everdo_File(object):
         self.tags = []
         # Map from Todoist to Everdo IDs
         self.todoist2everdo = {}
+        # All items, by their ID
+        self.eitems = {}
 
     def export(self, fp):
         output = {'items': encode(self.items),
@@ -126,9 +131,14 @@ class Everdo_File(object):
     def add_item(self, eitem, titem):
         self.items.append(eitem)
         self.todoist2everdo[titem['id']] = eitem.data['id']
+        self.eitems[eitem.data['id']] = eitem
 
     def get_eid(self, t_id):
         return self.todoist2everdo[t_id]
+
+    def get_eitem(self, t_id):
+        eid = self.todoist2everdo[t_id]
+        return self.eitems[eid]
 
 
 class Everdo_Tag(object):

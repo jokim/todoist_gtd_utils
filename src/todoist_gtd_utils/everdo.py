@@ -153,12 +153,14 @@ class Everdo_Schedule(dict):
             "daysOfMonth": null,
             "daysOfYear": null,
             "limit": null,
-            "endDate": null
+            "endDate": null,
+            "autoDueDate": true
         },
 
     """
     def __init__(self, type=None, period=None, daysOfWeek=None,
-                 daysOfMonth=None, daysOfYear=None, limit=None, endDate=None):
+                 daysOfMonth=None, daysOfYear=None, limit=None, endDate=None,
+                 autoDueDate=True):
         vars = locals()
         del vars['self']
         super(Everdo_Schedule, self).__init__(**vars)

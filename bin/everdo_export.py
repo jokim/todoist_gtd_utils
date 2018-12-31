@@ -370,8 +370,7 @@ def main():
     if not api.is_authenticated():
         userinput.login_dialog(api)
     print("Full sync with Todoist first…")
-    # TODO: add back when done testing:
-    # api.fullsync()
+    api.fullsync()
     print("Full sync done")
 
     edo = everdo.Everdo_File()

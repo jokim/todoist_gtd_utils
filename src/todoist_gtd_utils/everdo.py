@@ -141,6 +141,29 @@ class Everdo_File(object):
         return self.eitems[eid]
 
 
+class Everdo_Schedule(dict):
+    """Handle the Schedule model for Everdo.
+
+    Based on best guesses… Example::
+
+        "schedule": {
+            "type": "Daily",
+            "period": 1,
+            "daysOfWeek": null,
+            "daysOfMonth": null,
+            "daysOfYear": null,
+            "limit": null,
+            "endDate": null
+        },
+
+    """
+    def __init__(self, type=None, period=None, daysOfWeek=None,
+                 daysOfMonth=None, daysOfYear=None, limit=None, endDate=None):
+        vars = locals()
+        del vars['self']
+        super(Everdo_Schedule, self).__init__(**vars)
+
+
 class Everdo_Tag(object):
     """A tag in the Everdo file format"""
 

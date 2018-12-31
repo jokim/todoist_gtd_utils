@@ -188,8 +188,9 @@ def add_notes(edo, api):
         try:
             eitem = edo.get_eitem(note['item_id'])
         except KeyError:
-            print("Can't find item id %s for note: %s" % (note['item_id'],
-                                                          note['content']))
+            print("Can't find item id {} for note: {}"
+                  .format(note['item_id'],
+                          note['content'][:100].replace('\n', ' ')))
             continue
         eitem.data['note'] += '\n' + note['content']
         i += 1

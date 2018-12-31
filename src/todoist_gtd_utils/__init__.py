@@ -23,6 +23,8 @@ TODO:
 
 """
 
+from __future__ import unicode_literals
+
 import io
 import time
 from datetime import datetime, timedelta
@@ -553,7 +555,7 @@ class GTDItem(HelperItem):
             return False
         # TODO: Use some API for fetching this?
         label = self.api.labels.all(lambda x: x['name'] == 'waiting')[0]
-        return label in self.get_labels()
+        return label['id'] in self.get_labels()
 
     def get_project(self):
         """Return the item's project instance."""

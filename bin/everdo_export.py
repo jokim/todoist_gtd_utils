@@ -87,6 +87,8 @@ def add_active_projects(edo, api):
                     continue
                 if item.is_title():
                     eproject.data['note'] += '\n' + item['content']
+                    edo.todoist2everdo.setdefault(item['id'],
+                                                  eproject.data['id'])
                     continue
                 add_item(edo, api, item, parent=eproject)
                 added_items += 1
@@ -106,7 +108,7 @@ def get_inactive_labels(item):
         lname = _escape_inactive_label(match)
         try:
             ret.add(item.api.get_label_id(lname))
-        except Exception as e:
+        except Exception:
             # ignore missing labels
             # print("Not found label: {}".format(e))
             continue
@@ -120,8 +122,9 @@ def _escape_inactive_label(labelname):
     return labelname
 
 
-def add_item(edo, api, item, list_type=None, parent=None):
-    """Add an action/item (not project)"""
+def add_item(edo, api, item, list_type=None, parent=None,
+             everdo_cls=everdo.Everdo_Action):
+    """Add an action/item/note (not project)"""
     completed_on = due_date = None
 
     if not list_type:
@@ -148,17 +151,19 @@ def add_item(edo, api, item, list_type=None, parent=None):
         print("Okay to only care about 'due_date_utc'?")
         print()
 
+    # TODO: if date_string startswith (every or after): use schedule!
+
     tags = [edo.get_eid(l) for l in item['labels']]
     tags.extend(edo.get_eid(l) for l in get_inactive_labels(item))
 
     # TODO: more variables to include?
-    ret = everdo.Everdo_Action(parent,
-                               list_type=list_type,
-                               title=item['content'],
-                               completed_on=completed_on,
-                               created_on=created_on,
-                               due_date=due_date,
-                               tags=tags)
+    ret = everdo_cls(parent,
+                     list_type=list_type,
+                     title=item['content'],
+                     completed_on=completed_on,
+                     created_on=created_on,
+                     due_date=due_date,
+                     tags=tags)
     edo.add_item(ret, item)
     return ret
 
@@ -188,6 +193,8 @@ def add_someday(edo, api):
                     continue
                 if item.is_title():
                     eproject.data['note'] += '\n' + item['content']
+                    edo.todoist2everdo.setdefault(item['id'],
+                                                  eproject.data['id'])
                     continue
                 add_item(edo, api, item, parent=eproject)
                 added_items += 1
@@ -202,21 +209,73 @@ def add_someday(edo, api):
 
 
 def add_other_project(edo, api, pname):
-    # TODO: just put it in Next?
-    print("Not implemented " + pname)
-    pass
+    """Simply copy the project. Manual tweaks needed in Everdo afterwards."""
+    p = api.get_project_by_name(pname)
+    if p.get_child_projects():
+        print("WARN: {} has child projects. What to do?".format(pname))
+    if p['is_deleted']:
+        print("WARN: {} is deleted. What to do?".format(pname))
+        return
+
+    completed_on = None
+    if p['is_archived']:
+        completed_on = int(time.time())
+    eproject = everdo.Everdo_Project('a', p['name'],
+                                     is_focused=p['is_favorite'],
+                                     completed_on=completed_on)
+    edo.add_item(eproject, p)
+
+    for item in p.get_child_items():
+        if item['is_deleted']:
+            continue
+        if item.is_title():
+            eproject.data['note'] += '\n' + item['content']
+            edo.todoist2everdo.setdefault(item['id'],
+                                          eproject.data['id'])
+            continue
+        add_item(edo, api, item, parent=eproject)
 
 
-def add_notes(edo, api):
+def add_notebook(edo, api, pname):
+    """Simply copy the project. Manual tweaks needed in Everdo afterwards."""
+    p = api.get_project_by_name(pname)
+    if p.get_child_projects():
+        print("WARN: {} has child projects. What to do?".format(pname))
+    if p['is_deleted']:
+        print("WARN: {} is deleted. What to do?".format(pname))
+        return
+
+    completed_on = None
+    if p['is_archived']:
+        completed_on = int(time.time())
+    notebook = everdo.Everdo_Notebook('a', p['name'],
+                                      is_focused=p['is_favorite'],
+                                      completed_on=completed_on)
+    edo.add_item(notebook, p)
+
+    for item in p.get_child_items():
+        if item['is_deleted']:
+            continue
+        add_item(edo, api, item, parent=notebook,
+                 everdo_cls=everdo.Everdo_Note)
+
+
+def add_todoist_notes(edo, api):
     i = 0
     for note in api.notes.all():
         if note['is_deleted']:
             continue
+        if note['is_archived']:
+            continue
+        if not note['content'].strip():
+            continue
         try:
             eitem = edo.get_eitem(note['item_id'])
         except KeyError:
-            print("Can't find item id {} for note: {}"
+            item = api.items.get_by_id(note['item_id'])
+            print("Can't find item id {} ({}) for note: {}"
                   .format(note['item_id'],
+                          item['content'][:100].replace('\n', ' '),
                           note['content'][:100].replace('\n', ' ')))
             continue
         eitem.data['note'] += '\n' + note['content']
@@ -243,7 +302,7 @@ def main():
         userinput.login_dialog(api)
     print("Full sync with Todoist first…")
     # TODO: add back when done testing:
-    # api.fullsync()
+    #api.fullsync()
     print("Full sync done")
 
     edo = everdo.Everdo_File()
@@ -251,10 +310,13 @@ def main():
     add_inbox(edo, api)
     add_active_projects(edo, api)
     add_someday(edo, api)
-    for p in ("Jobbrutiner", "Privatrutiner", "Heimerutiner", "Påminningar"):
+    for p in ("JobbRutiner", "PrivatRutiner", "Husarbeid", "Påminningar"):
         add_other_project(edo, api, p)
-    add_notes(edo, api)
+    # TODO: import project Lesestund - create as Notebook?
+    add_notebook(edo, api, "Lesestund")
+    add_todoist_notes(edo, api)
     # TODO: more?
+
     edo.export(args.out)
     print("Exported %d items and %d tags" % (len(edo.items), len(edo.tags)))
     args.out.close()

@@ -136,6 +136,10 @@ def parse_datestring_to_schedule(datestring):
 
     """
     datestring = datestring.lower()
+
+    # TODO: Something's wrong here. Doesn't get imported by Everdo, but does so
+    # silently, so don't know why.
+
     es = everdo.Everdo_Schedule
     if ('every' not in datestring) and ('after' not in datestring):
         # Not repeatable

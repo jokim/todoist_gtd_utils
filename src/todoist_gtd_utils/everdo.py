@@ -111,7 +111,6 @@ def datetime2stamp(dat):
 class Everdo_File(object):
     def __init__(self):
         self.items = []
-        # TODO: what more?
         self.tags = []
         # Map from Todoist to Everdo IDs
         self.todoist2everdo = {}
@@ -173,7 +172,6 @@ class Everdo_Tag(object):
         "c",  # contact
         "a",  # area
         "l",  # label
-        # TODO; others?
     )
 
     def __init__(self,

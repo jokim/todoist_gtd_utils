@@ -155,8 +155,6 @@ def add_item(edo, api, item, list_type=None, parent=None,
 
     tags = [edo.get_eid(l) for l in item['labels']]
     tags.extend(edo.get_eid(l) for l in get_inactive_labels(item))
-
-    # TODO: more variables to include?
     ret = everdo_cls(parent,
                      list_type=list_type,
                      title=item['content'],
@@ -191,6 +189,13 @@ def add_someday(edo, api):
             for item in p.get_child_items():
                 if item['is_deleted']:
                     continue
+                if item['due_date_utc']:
+                    # Move project to scheduled if any date is set
+                    eproject.data['list'] = 's'
+                    start_date = everdo.duedateutc2stamp(item['due_date_utc'])
+                    if (not eproject.data['start_date'] or
+                            start_date < eproject.data['start_date']):
+                        eproject.data['start_date'] = start_date
                 if item.is_title():
                     eproject.data['note'] += '\n' + item['content']
                     edo.todoist2everdo.setdefault(item['id'],
@@ -302,7 +307,7 @@ def main():
         userinput.login_dialog(api)
     print("Full sync with Todoist first…")
     # TODO: add back when done testing:
-    #api.fullsync()
+    # api.fullsync()
     print("Full sync done")
 
     edo = everdo.Everdo_File()
@@ -312,10 +317,8 @@ def main():
     add_someday(edo, api)
     for p in ("JobbRutiner", "PrivatRutiner", "Husarbeid", "Påminningar"):
         add_other_project(edo, api, p)
-    # TODO: import project Lesestund - create as Notebook?
     add_notebook(edo, api, "Lesestund")
     add_todoist_notes(edo, api)
-    # TODO: more?
 
     edo.export(args.out)
     print("Exported %d items and %d tags" % (len(edo.items), len(edo.tags)))

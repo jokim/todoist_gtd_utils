@@ -26,6 +26,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
+import re
 import sys
 import time
 
@@ -99,19 +100,38 @@ def add_active_projects(edo, api):
     print("Added %d standalone items" % added_standalone_items)
 
 
+def get_inactive_labels(item):
+    ret = set()
+    for match in re.findall('__[a-zA-ZæøåÆØÅ]+', item['content']):
+        print("Found match: {}".format(match))
+        lname = _escape_inactive_label(match)
+        try:
+            ret.add(item.api.get_label_id(lname))
+        except Exception as e:
+            # ignore missing labels
+            # print("Not found label: {}".format(e))
+            continue
+        print("Old content: {}".format(item['content']))
+        item['content'] = item['content'].replace(match, '').strip()
+        print("New content: {}".format(item['content']))
+    print("Found inactive labels: {}".format(ret))
+    return ret
+
+
+def _escape_inactive_label(labelname):
+    if labelname.startswith('__'):
+        return labelname[2:]
+    return labelname
+
+
 def add_item(edo, api, item, list_type=None, parent=None):
     """Add an action/item (not project)"""
-    # TODO: add policies
-    # - Someday?
-    # - If item is only a comment, include it in the projects
-    #   comment?
     completed_on = due_date = None
 
     if not list_type:
         list_type = 'a'
         if item.is_waiting():
             list_type = 'w'
-    # TODO: verify if list_type gets set correctly
 
     if item['is_archived'] or item['date_completed']:
         if not list_type:
@@ -133,6 +153,8 @@ def add_item(edo, api, item, list_type=None, parent=None):
         print()
 
     tags = [edo.get_eid(l) for l in item['labels']]
+    tags.extend(edo.get_eid(l) for l in get_inactive_labels(item))
+
     # TODO: more variables to include?
     ret = everdo.Everdo_Action(parent,
                                list_type=list_type,
@@ -162,6 +184,9 @@ def add_someday(edo, api):
             edo.add_item(eproject, p)
             added_projects += 1
 
+            # TODO: if the project has a due date, move it to scheduled
+            # instead? Not sure if that is
+
             for item in p.get_child_items():
                 if item['is_deleted']:
                     continue
@@ -180,6 +205,12 @@ def add_someday(edo, api):
     print("Added %d standalone someday items" % added_standalone_items)
 
 
+def add_other_project(edo, api, pname):
+    # TODO: just put it in Next?
+    print("Not implemented " + pname)
+    pass
+
+
 def add_notes(edo, api):
     i = 0
     for note in api.notes.all():
@@ -194,7 +225,7 @@ def add_notes(edo, api):
             continue
         eitem.data['note'] += '\n' + note['content']
         i += 1
-        # TODO: file attachments
+        # Add file attachments as direct links. Should I download them instead?
         if note['file_attachment']:
             for k in ('file_url', 'url'):
                 url = note['file_attachment'].get(k)
@@ -215,7 +246,7 @@ def main():
     if not api.is_authenticated():
         userinput.login_dialog(api)
     print("Full sync with Todoist first…")
-    # TODO: add back when done testing
+    # TODO: add back when done testing:
     # api.fullsync()
     print("Full sync done")
 
@@ -224,6 +255,8 @@ def main():
     add_inbox(edo, api)
     add_active_projects(edo, api)
     add_someday(edo, api)
+    for p in ("Jobbrutiner", "Privatrutiner", "Heimerutiner", "Påminningar"):
+        add_other_project(edo, api, p)
     add_notes(edo, api)
     # TODO: more?
     edo.export(args.out)
